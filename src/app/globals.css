@@ -1,0 +1,41 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  background: #16171c;
+  color: #e7e7ea;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Scrollbars in the editor panels, kept unobtrusive. */
+.thin-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.thin-scroll::-webkit-scrollbar-thumb {
+  background: #3a3c46;
+  border-radius: 4px;
+}
+.thin-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@layer components {
+  .ws-field {
+    @apply w-full rounded border border-edge bg-panelAlt px-2 py-1.5 text-sm text-white outline-none focus:border-accent;
+  }
+  .ws-label {
+    @apply mb-1 block text-[11px] font-medium uppercase tracking-wide text-neutral-400;
+  }
+  .ws-btn {
+    @apply inline-flex items-center justify-center gap-1.5 rounded border border-edge bg-panelAlt px-3 py-1.5 text-sm text-neutral-200 transition-colors hover:border-neutral-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .ws-btn-primary {
+    @apply inline-flex items-center justify-center gap-1.5 rounded bg-accent px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+}

@@ -1,0 +1,127 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Auth (Auth.js / NextAuth prisma adapter shape)
+// ---------------------------------------------------------------------------
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  passwordHash  String?
+  createdAt     DateTime  @default(now())
+
+  accounts Account[]
+  sessions Session[]
+  projects Project[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ---------------------------------------------------------------------------
+// Builder domain
+// ---------------------------------------------------------------------------
+
+model Project {
+  id        String   @id @default(cuid())
+  name      String
+  // Subdomain-ish slug used for the published URL: /s/<slug>/<page path>
+  slug      String   @unique
+  ownerId   String
+  published Boolean  @default(false)
+
+  // Site-wide CSS carried over from an imported template, plus user globals.
+  importedCss String? @db.Text
+  customCss   String? @db.Text
+  // Fonts / colour tokens shown in the style panel, as JSON.
+  theme       Json?
+
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  owner  User    @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  pages  Page[]
+  assets Asset[]
+
+  @@index([ownerId])
+}
+
+model Page {
+  id        String  @id @default(cuid())
+  projectId String
+  title     String
+  // "/" for the home page, "/about" etc. Unique within a project.
+  path      String
+  // The document model: a serialised BuilderNode tree.
+  tree      Json
+  // Snapshot of `tree` taken at publish time, so editing a live site is safe.
+  publishedTree Json?
+  sortOrder Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, path])
+  @@index([projectId])
+}
+
+model Asset {
+  id        String   @id @default(cuid())
+  projectId String
+  filename  String
+  mimeType  String
+  size      Int
+  // Small images are stored inline as data URLs to keep the MVP single-service.
+  data      String   @db.Text
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+}
