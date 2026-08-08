@@ -24,6 +24,32 @@ npm run dev
 
 Register an account at `/register`, then create a site from `/dashboard`.
 
+## Deploying to Vercel
+
+Set these environment variables on the project:
+
+| Variable       | Notes                                                          |
+| -------------- | -------------------------------------------------------------- |
+| `DATABASE_URL` | Must be a **pooled** connection string (see below)              |
+| `AUTH_SECRET`  | `openssl rand -base64 32`                                       |
+| `NEXTAUTH_URL` | Your deployment URL, e.g. `https://your-app.vercel.app`         |
+
+Serverless functions open a connection per invocation, so a direct Postgres URL
+will exhaust the connection limit under load. Use your provider's pooler —
+Neon's pooled endpoint, Supabase's port 6543, or PgBouncer — and append
+`?pgbouncer=true&connection_limit=1` for PgBouncer-style poolers.
+
+`prisma generate` runs in both `postinstall` and `build`, which is what keeps
+the client from going stale against Vercel's dependency cache. Run
+`npm run db:push` (or a migration) against the production database once before
+the first deploy; the build itself never touches the database.
+
+Dependencies are pinned and `npm audit` reports zero vulnerabilities. Two
+`overrides` pin `postcss` and `sharp` inside Next's own dependency tree, which
+is the only way to patch those without jumping to Next 16. `sharp` is unused at
+runtime anyway, since `images.unoptimized` is set — generated sites are static
+HTML and don't go through the image pipeline.
+
 ## How it works
 
 ### The document model
