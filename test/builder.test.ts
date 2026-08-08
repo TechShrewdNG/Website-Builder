@@ -4,8 +4,9 @@ import { JSDOM } from 'jsdom';
 
 import { compileCss } from '../src/lib/builder/css';
 import { buildExport, outputPathFor } from '../src/lib/builder/export';
-import { renderDocument, renderNode } from '../src/lib/builder/render';
-import { createNode } from '../src/lib/builder/widgets';
+import { composePage, renderDocument, renderNode } from '../src/lib/builder/render';
+import { createNode, WIDGETS } from '../src/lib/builder/widgets';
+import { TEMPLATES, getTemplate } from '../src/lib/builder/templates';
 import { createRoot, findNode, flatten, insertNode, moveNode, removeNode, setProps, setStyle } from '../src/lib/builder/tree';
 import type { BuilderNode } from '../src/lib/builder/types';
 
@@ -354,4 +355,189 @@ test('template CSS is layered so a per-element edit always wins', () => {
   const generatedAt = css.indexOf(`[data-ws="${heading.id}"]`);
   const templateEndsAt = css.indexOf('@layer ws-template');
   assert.ok(generatedAt > templateEndsAt, 'generated rules come after, unlayered');
+});
+
+// ---------------------------------------------------------------------------
+// SEO metadata
+// ---------------------------------------------------------------------------
+
+test('social cards emit both og: and twitter: tags', () => {
+  const html = renderDocument(createRoot([createNode('heading')]), {
+    title: 'Tuesday box',
+    description: 'Three bags, rotating monthly.',
+    socialImage: 'https://example.com/card.png',
+    canonical: 'https://example.com/shop',
+    siteName: 'Ridgeline',
+  });
+
+  assert.match(html, /<meta name="description" content="Three bags, rotating monthly\.">/);
+  // No single tag is read by every platform, so both families are emitted.
+  assert.match(html, /<meta property="og:image" content="https:\/\/example\.com\/card\.png">/);
+  assert.match(html, /<meta name="twitter:image" content="https:\/\/example\.com\/card\.png">/);
+  assert.match(html, /<meta name="twitter:card" content="summary_large_image">/);
+  assert.match(html, /<link rel="canonical" href="https:\/\/example\.com\/shop">/);
+  assert.match(html, /<meta property="og:site_name" content="Ridgeline">/);
+});
+
+test('a page with no social image asks for the small card, not a broken large one', () => {
+  const html = renderDocument(createRoot([]), { title: 'Plain' });
+  assert.match(html, /<meta name="twitter:card" content="summary">/);
+  assert.ok(!html.includes('og:image'));
+});
+
+test('noIndex emits robots and metadata is escaped', () => {
+  const html = renderDocument(createRoot([]), {
+    title: 'Draft',
+    noIndex: true,
+    description: 'Quotes " and <tags> in the description',
+  });
+
+  assert.match(html, /<meta name="robots" content="noindex, nofollow">/);
+  assert.ok(html.includes('&quot;'));
+  assert.ok(!html.includes('<tags>'));
+});
+
+// ---------------------------------------------------------------------------
+// Global header and footer
+// ---------------------------------------------------------------------------
+
+test('composePage wraps a page in its global sections, in document order', () => {
+  const header = createNode('section', { children: [createNode('heading')] });
+  const footer = createNode('section', { children: [createNode('text')] });
+  const page = createRoot([createNode('section')]);
+
+  const composed = composePage(page, header, footer);
+
+  assert.equal(composed.children.length, 3);
+  assert.equal(composed.children[0].id, header.id);
+  assert.equal(composed.children[2].id, footer.id);
+  // The page tree itself must not be mutated, or undo history would corrupt.
+  assert.equal(page.children.length, 1);
+});
+
+test('composePage is a no-op when a site has no globals', () => {
+  const page = createRoot([createNode('section')]);
+  assert.equal(composePage(page, null, null), page);
+});
+
+test('global sections appear on every exported page, with styles compiled once', () => {
+  const header = createNode('section');
+  header.styles.desktop = { 'background-color': 'navy' };
+
+  const files = buildExport({
+    name: 'Two pager',
+    header,
+    footer: null,
+    pages: [
+      { title: 'Home', path: '/', tree: createRoot([createNode('heading')]) },
+      { title: 'About', path: '/about', tree: createRoot([createNode('heading')]) },
+    ],
+  });
+
+  assert.ok(String(files['index.html']).includes(`data-ws="${header.id}"`));
+  assert.ok(String(files['about/index.html']).includes(`data-ws="${header.id}"`));
+
+  // Compiling globals per page would repeat identical rules N times. A boxed
+  // section legitimately emits two rules (itself and `> *`), so count rule
+  // blocks rather than every mention of the selector.
+  const css = String(files['assets/styles.css']);
+  const blocks = css.split(`[data-ws="${header.id}"] {`).length - 1;
+  assert.equal(blocks, 1, 'global styles are emitted exactly once, not per page');
+});
+
+// ---------------------------------------------------------------------------
+// Crawler files
+// ---------------------------------------------------------------------------
+
+test('a sitemap lists indexable pages as absolute URLs', () => {
+  const files = buildExport({
+    name: 'Site',
+    baseUrl: 'https://example.com/',
+    pages: [
+      { title: 'Home', path: '/', tree: createRoot([]) },
+      { title: 'About', path: '/about', tree: createRoot([]) },
+      { title: 'Secret', path: '/secret', tree: createRoot([]), noIndex: true },
+    ],
+  });
+
+  const sitemap = String(files['sitemap.xml']);
+  assert.match(sitemap, /<loc>https:\/\/example\.com\/<\/loc>/);
+  assert.match(sitemap, /<loc>https:\/\/example\.com\/about<\/loc>/);
+  // A noindex page in the sitemap actively contradicts its own meta tag.
+  assert.ok(!sitemap.includes('/secret'));
+  // The trailing slash on baseUrl must not double up.
+  assert.ok(!sitemap.includes('example.com//'));
+
+  assert.match(String(files['robots.txt']), /Disallow: \/secret/);
+  assert.match(String(files['robots.txt']), /Sitemap: https:\/\/example\.com\/sitemap\.xml/);
+});
+
+test('without a site URL there is no sitemap, since it would need absolute URLs', () => {
+  const files = buildExport({
+    name: 'Site',
+    pages: [{ title: 'Home', path: '/', tree: createRoot([]) }],
+  });
+
+  assert.equal(files['sitemap.xml'], undefined);
+  assert.ok(files['robots.txt'], 'robots is still useful without a base URL');
+});
+
+test('canonical URLs are emitted per page and a favicon is written once', () => {
+  const pixel =
+    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+
+  const files = buildExport({
+    name: 'Site',
+    baseUrl: 'https://example.com',
+    favicon: pixel,
+    pages: [
+      { title: 'Home', path: '/', tree: createRoot([]) },
+      { title: 'About', path: '/about', tree: createRoot([]) },
+    ],
+  });
+
+  assert.match(String(files['index.html']), /rel="canonical" href="https:\/\/example\.com\/"/);
+  assert.match(String(files['about/index.html']), /rel="canonical" href="https:\/\/example\.com\/about"/);
+  assert.ok(files['assets/favicon'], 'favicon written');
+  // Nested pages need the relative prefix, same as the stylesheet.
+  assert.match(String(files['about/index.html']), /rel="icon" href="\.\.\/assets\/favicon"/);
+});
+
+// ---------------------------------------------------------------------------
+// Templates
+// ---------------------------------------------------------------------------
+
+test('every template builds a renderable, editable tree', () => {
+  for (const template of TEMPLATES) {
+    const built = template.build();
+    const html = renderNode(built.page);
+
+    assert.ok(built.page.id === 'root', `${template.id} produces a root`);
+    // Templates are trees, not markup — every node must be addressable, or it
+    // could not be selected and edited.
+    for (const node of flatten(built.page)) {
+      assert.ok(node.id, `${template.id}: every node has an id`);
+      assert.ok(WIDGETS[node.type], `${template.id}: ${node.type} is a real widget`);
+    }
+    if (template.id !== 'blank') {
+      assert.ok(html.length > 200, `${template.id} produces real content`);
+    }
+  }
+});
+
+test('template ids are unique and resolvable', () => {
+  const ids = TEMPLATES.map((template) => template.id);
+  assert.equal(new Set(ids).size, ids.length);
+  for (const id of ids) assert.ok(getTemplate(id));
+  assert.equal(getTemplate('nope'), undefined);
+});
+
+test('templates that ship a header and footer keep them out of the page tree', () => {
+  const landing = getTemplate('landing')!.build();
+  assert.ok(landing.header && landing.footer);
+
+  // Globals living in the page tree would defeat the point: editing one page
+  // would not change the others.
+  const pageHtml = renderNode(landing.page);
+  assert.ok(!pageHtml.includes(`data-ws="${landing.header!.id}"`));
 });

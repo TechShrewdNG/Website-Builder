@@ -10,6 +10,8 @@ import Icon from '@/components/Icon';
 interface Props {
   node: BuilderNode | null;
   projectId: string;
+  /** Link targets within this site, offered alongside free-text URLs. */
+  pages: { title: string; path: string }[];
   breakpoint: Breakpoint;
   onPropsChange: (patch: Record<string, unknown>) => void;
   onStyleChange: (patch: StyleMap) => void;
@@ -22,6 +24,7 @@ const ICONS = ['★', '✓', '→', '✚', '✉', '☎', '⚑', '♥', '⚙', '�
 export default function Inspector({
   node,
   projectId,
+  pages,
   breakpoint,
   onPropsChange,
   onStyleChange,
@@ -114,6 +117,7 @@ export default function Inspector({
                   control={control}
                   value={node.props[control.key]}
                   projectId={projectId}
+                  pages={pages}
                   onChange={(value) => onPropsChange({ [control.key]: value })}
                 />
               ))}
@@ -122,6 +126,7 @@ export default function Inspector({
                   control={{ key: 'count', label: 'Columns', type: 'number' }}
                   value={node.children.length}
                   projectId={projectId}
+                  pages={pages}
                   onChange={(value) => onPropsChange({ count: value })}
                 />
               )}
@@ -139,14 +144,19 @@ function ControlField({
   control,
   value,
   projectId,
+  pages,
   onChange,
 }: {
   control: Control;
   value: unknown;
   projectId: string;
+  pages: { title: string; path: string }[];
   onChange: (value: unknown) => void;
 }) {
   switch (control.type) {
+    case 'url':
+      return <LinkField control={control} value={String(value ?? '')} pages={pages} onChange={onChange} />;
+
     case 'toggle':
       return (
         <label className="flex cursor-pointer items-center gap-2.5 rounded-md py-0.5 text-[13px] text-neutral-300 transition-colors hover:text-white">
@@ -239,6 +249,7 @@ function ControlField({
           control={control}
           items={Array.isArray(value) ? (value as Record<string, unknown>[]) : []}
           projectId={projectId}
+          pages={pages}
           onChange={onChange}
         />
       );
@@ -257,6 +268,62 @@ function ControlField({
         </label>
       );
   }
+}
+
+/**
+ * A link field that knows the site's own pages.
+ *
+ * Typing "/about" by hand is easy to get subtly wrong — a trailing slash, a
+ * stale path after a page is renamed — and the mistake only surfaces as a 404
+ * after publishing. Picking from the list can't produce a path that doesn't
+ * exist.
+ */
+function LinkField({
+  control,
+  value,
+  pages,
+  onChange,
+}: {
+  control: Control;
+  value: string;
+  pages: { title: string; path: string }[];
+  onChange: (value: unknown) => void;
+}) {
+  const matchesPage = pages.some((page) => page.path === value);
+
+  return (
+    <div>
+      <span className="ws-label">{control.label}</span>
+      <div className="flex gap-1">
+        <select
+          className="ws-field w-[104px] shrink-0 text-[12px]"
+          aria-label={`${control.label}: pick a page`}
+          value={matchesPage ? value : ''}
+          onChange={(event) => {
+            if (event.target.value) onChange(event.target.value);
+          }}
+        >
+          <option value="">Custom…</option>
+          {pages.map((page) => (
+            <option key={page.path} value={page.path}>
+              {page.title}
+            </option>
+          ))}
+        </select>
+        <input
+          className="ws-field"
+          value={value}
+          placeholder={control.placeholder ?? 'https://example.com'}
+          onChange={(event) => onChange(event.target.value)}
+        />
+      </div>
+      {value && !matchesPage && value.startsWith('/') && (
+        <p className="mt-1.5 text-[11px] leading-relaxed text-danger">
+          No page at {value}. Links to missing pages 404 once published.
+        </p>
+      )}
+    </div>
+  );
 }
 
 function ImageField({
@@ -331,11 +398,13 @@ function Repeater({
   control,
   items,
   projectId,
+  pages,
   onChange,
 }: {
   control: Control;
   items: Record<string, unknown>[];
   projectId: string;
+  pages: { title: string; path: string }[];
   onChange: (value: unknown) => void;
 }) {
   const [openIndex, setOpenIndex] = useState<number | null>(0);
@@ -405,6 +474,7 @@ function Repeater({
                     control={field}
                     value={item[field.key]}
                     projectId={projectId}
+                    pages={pages}
                     onChange={(value) => update(index, { [field.key]: value })}
                   />
                 ))}

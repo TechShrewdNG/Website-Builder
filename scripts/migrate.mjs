@@ -12,6 +12,28 @@
  */
 
 import { spawnSync } from 'node:child_process';
+import { existsSync, readFileSync } from 'node:fs';
+
+/**
+ * Hosted platforms inject real environment variables, but a local `npm run
+ * build` only has whatever is in .env — and a plain Node script, unlike the
+ * Next CLI, does not load it. Without this the script silently reports "no
+ * DATABASE_URL" and skips migrations on every local build.
+ */
+function loadEnvFile() {
+  for (const file of ['.env.local', '.env']) {
+    if (!existsSync(file)) continue;
+    for (const line of readFileSync(file, 'utf8').split('\n')) {
+      const match = /^\s*([A-Z0-9_]+)\s*=\s*(.*)$/i.exec(line);
+      if (!match) continue;
+      const [, key, raw] = match;
+      if (process.env[key] !== undefined) continue;
+      process.env[key] = raw.trim().replace(/^["']|["']$/g, '');
+    }
+  }
+}
+
+loadEnvFile();
 
 const url = process.env.DIRECT_URL || process.env.DATABASE_URL;
 

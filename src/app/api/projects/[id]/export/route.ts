@@ -23,10 +23,17 @@ export async function GET(_request: Request, { params }: Params) {
       importedCss: project.importedCss,
       customCss: project.customCss,
       externalStylesheets: theme.externalStylesheets,
+      header: project.headerTree as unknown as BuilderNode | null,
+      footer: project.footerTree as unknown as BuilderNode | null,
+      favicon: project.faviconData,
+      baseUrl: project.siteUrl,
       pages: project.pages.map((page) => ({
         title: page.title,
         path: page.path,
         tree: page.tree as unknown as BuilderNode,
+        description: page.description,
+        socialImage: page.socialImage,
+        noIndex: page.noIndex,
       })),
     });
 

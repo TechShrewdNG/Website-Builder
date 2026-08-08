@@ -7,7 +7,7 @@
  * runtime are referenced by relative path from each page's depth.
  */
 
-import { buildStylesheet, renderDocument, treeNeedsRuntime, WIDGET_CSS } from './render';
+import { buildStylesheet, composePage, renderDocument, treeNeedsRuntime, WIDGET_CSS } from './render';
 import { compileCss, inLayer, BASE_CSS, LAYER_ORDER } from './css';
 import { RUNTIME_JS } from './runtime';
 import type { BuilderNode } from './types';
@@ -16,6 +16,9 @@ export interface ExportPage {
   title: string;
   path: string;
   tree: BuilderNode;
+  description?: string | null;
+  socialImage?: string | null;
+  noIndex?: boolean;
 }
 
 export interface ExportInput {
@@ -24,6 +27,11 @@ export interface ExportInput {
   importedCss?: string | null;
   customCss?: string | null;
   externalStylesheets?: string[];
+  header?: BuilderNode | null;
+  footer?: BuilderNode | null;
+  favicon?: string | null;
+  /** Site origin, e.g. https://example.com — enables canonical URLs and a sitemap. */
+  baseUrl?: string | null;
 }
 
 export type FileMap = Record<string, string | Uint8Array>;
@@ -125,12 +133,20 @@ export function buildExport(input: ExportInput): FileMap {
     tree: extractImages(page.tree, files, seen),
   }));
 
+  // Globals go through the same image extraction, once for the whole site.
+  const header = input.header ? extractImages(input.header, files, seen) : null;
+  const footer = input.footer ? extractImages(input.footer, files, seen) : null;
+
   // One stylesheet for the whole site: node ids are unique across pages, so
   // combining is safe and lets the browser cache it once.
   const siteCss = [
     LAYER_ORDER,
     inLayer('ws-base', `${BASE_CSS}\n${WIDGET_CSS}`),
     inLayer('ws-template', input.importedCss),
+    // Globals are compiled once, not per page: their node ids are shared, so
+    // compiling them with each page would emit the same rules N times.
+    header ? compileCss(header) : '',
+    footer ? compileCss(footer) : '',
     ...pages.map((page) => compileCss(page.tree)),
     input.customCss ?? '',
   ]
@@ -139,7 +155,10 @@ export function buildExport(input: ExportInput): FileMap {
 
   files['assets/styles.css'] = siteCss;
 
-  const anyRuntime = pages.some((page) => treeNeedsRuntime(page.tree));
+  const anyRuntime =
+    pages.some((page) => treeNeedsRuntime(page.tree)) ||
+    Boolean(header && treeNeedsRuntime(header)) ||
+    Boolean(footer && treeNeedsRuntime(footer));
   if (anyRuntime) files['assets/builder.js'] = RUNTIME_JS;
 
   const externalLinks = (input.externalStylesheets ?? [])
@@ -147,17 +166,63 @@ export function buildExport(input: ExportInput): FileMap {
     .map((href) => `<link rel="stylesheet" href="${href.replace(/"/g, '&quot;')}">`)
     .join('\n');
 
+  const baseUrl = (input.baseUrl ?? '').replace(/\/+$/, '');
+
   for (const page of pages) {
     const outputPath = outputPathFor(page.path);
     const prefix = prefixFor(outputPath);
 
-    files[outputPath] = renderDocument(prefixImagePaths(page.tree, prefix), {
+    const composed = composePage(
+      prefixImagePaths(page.tree, prefix),
+      header ? prefixImagePaths(header, prefix) : null,
+      footer ? prefixImagePaths(footer, prefix) : null,
+    );
+
+    files[outputPath] = renderDocument(composed, {
       title: page.title,
+      description: page.description,
+      socialImage: page.socialImage ? absolute(page.socialImage, baseUrl) : null,
+      canonical: baseUrl ? `${baseUrl}${page.path === '/' ? '/' : page.path}` : null,
+      noIndex: page.noIndex,
+      favicon: input.favicon ? `${prefix}assets/favicon` : null,
+      siteName: input.name,
       stylesheetHref: `${prefix}assets/styles.css`,
-      runtimeSrc: treeNeedsRuntime(page.tree) ? `${prefix}assets/builder.js` : undefined,
+      runtimeSrc: anyRuntime ? `${prefix}assets/builder.js` : undefined,
       headExtra: externalLinks,
     });
   }
+
+  if (input.favicon) {
+    const match = DATA_URL.exec(input.favicon);
+    if (match) {
+      const [, , base64, payload] = match;
+      files['assets/favicon'] = base64
+        ? Uint8Array.from(Buffer.from(payload, 'base64'))
+        : decodeURIComponent(payload);
+    }
+  }
+
+  // A sitemap needs absolute URLs, so it is only meaningful once the site's
+  // final origin is known.
+  const indexable = pages.filter((page) => !page.noIndex);
+  if (baseUrl && indexable.length) {
+    files['sitemap.xml'] =
+      `<?xml version="1.0" encoding="UTF-8"?>\n` +
+      `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
+      indexable
+        .map((page) => `  <url><loc>${xmlEscape(`${baseUrl}${page.path === '/' ? '/' : page.path}`)}</loc></url>`)
+        .join('\n') +
+      `\n</urlset>\n`;
+  }
+
+  files['robots.txt'] =
+    `User-agent: *\n` +
+    pages
+      .filter((page) => page.noIndex)
+      .map((page) => `Disallow: ${page.path}\n`)
+      .join('') +
+    `Allow: /\n` +
+    (baseUrl ? `\nSitemap: ${baseUrl}/sitemap.xml\n` : '');
 
   files['README.txt'] =
     `${input.name}\n\nStatic export from Website Builder.\n\n` +
@@ -167,6 +232,22 @@ export function buildExport(input: ExportInput): FileMap {
     `web server but not when opening files directly from disk.\n`;
 
   return files;
+}
+
+function xmlEscape(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+/** og:image must be an absolute URL; relative paths are ignored by crawlers. */
+function absolute(value: string, baseUrl: string): string {
+  if (!value || /^(https?:|data:)/i.test(value)) return value;
+  if (!baseUrl) return value;
+  return `${baseUrl}/${value.replace(/^\/+/, '')}`;
 }
 
 /** Used by the single-page "download this page" action. */

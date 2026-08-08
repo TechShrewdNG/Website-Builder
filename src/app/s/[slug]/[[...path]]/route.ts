@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/db';
 import { normalisePath } from '@/lib/projects';
-import { renderDocument } from '@/lib/builder/render';
+import { composePage, renderDocument } from '@/lib/builder/render';
 import type { BuilderNode } from '@/lib/builder/types';
 
 /**
@@ -15,9 +15,10 @@ import type { BuilderNode } from '@/lib/builder/types';
  */
 export const dynamic = 'force-dynamic';
 
-export async function GET(_request: Request, { params }: { params: Promise<{ slug: string; path?: string[] }> }) {
+export async function GET(request: Request, { params }: { params: Promise<{ slug: string; path?: string[] }> }) {
   const { slug, path } = await params;
-  const pagePath = normalisePath(`/${(path ?? []).join('/')}`);
+  const segments = path ?? [];
+  const pagePath = normalisePath(`/${segments.join('/')}`);
 
   const project = await prisma.project.findFirst({
     where: { slug, published: true },
@@ -25,6 +26,19 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
   });
 
   if (!project) return notFoundResponse('This site is not published.');
+
+  const origin = new URL(request.url).origin;
+  const siteBase = `${origin}/s/${project.slug}`;
+
+  // Crawler files are served from the site root rather than the app's.
+  if (segments.length === 1 && segments[0] === 'sitemap.xml') {
+    return sitemapResponse(project.pages, siteBase);
+  }
+  if (segments.length === 1 && segments[0] === 'robots.txt') {
+    return new Response(`User-agent: *\nAllow: /\n\nSitemap: ${siteBase}/sitemap.xml\n`, {
+      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+    });
+  }
 
   const page = project.pages.find((candidate) => candidate.path === pagePath);
   if (!page) return notFoundResponse('Page not found.');
@@ -43,8 +57,17 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
   // the builder's own runtime execute; anything user-supplied is blocked.
   const nonce = crypto.randomUUID();
 
-  const html = renderDocument(tree, {
+  const header = (project.publishedHeaderTree ?? project.headerTree) as unknown as BuilderNode | null;
+  const footer = (project.publishedFooterTree ?? project.footerTree) as unknown as BuilderNode | null;
+
+  const html = renderDocument(composePage(tree, header, footer), {
     title: page.title,
+    description: page.description,
+    socialImage: page.socialImage,
+    canonical: `${siteBase}${page.path === '/' ? '' : page.path}`,
+    noIndex: page.noIndex,
+    favicon: project.faviconData,
+    siteName: project.name,
     importedCss: project.importedCss,
     customCss: project.customCss,
     headExtra: externalLinks,
@@ -58,6 +81,25 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
       'Cache-Control': 'public, max-age=0, must-revalidate',
     },
   });
+}
+
+function sitemapResponse(
+  pages: { path: string; noIndex: boolean }[],
+  siteBase: string,
+): Response {
+  const body =
+    `<?xml version="1.0" encoding="UTF-8"?>\n` +
+    `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
+    pages
+      .filter((page) => !page.noIndex)
+      .map(
+        (page) =>
+          `  <url><loc>${`${siteBase}${page.path === '/' ? '' : page.path}`.replace(/&/g, '&amp;')}</loc></url>`,
+      )
+      .join('\n') +
+    `\n</urlset>\n`;
+
+  return new Response(body, { headers: { 'Content-Type': 'application/xml; charset=utf-8' } });
 }
 
 function notFoundResponse(message: string) {

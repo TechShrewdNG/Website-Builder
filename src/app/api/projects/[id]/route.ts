@@ -3,13 +3,20 @@ import { z } from 'zod';
 
 import { currentUserId } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { requireProject } from '@/lib/projects';
+import { Prisma } from '@prisma/client';
+
+import { asJson, requireProject } from '@/lib/projects';
 import { toResponse, unauthorized } from '@/lib/http';
 
 const patchSchema = z.object({
   name: z.string().trim().min(1).max(80).optional(),
   customCss: z.string().max(500_000).optional(),
   importedCss: z.string().max(2_000_000).optional(),
+  faviconData: z.string().max(200_000).nullable().optional(),
+  siteUrl: z.string().max(300).optional(),
+  // `null` clears a global section; omitting it leaves the slot untouched.
+  headerTree: z.unknown().optional(),
+  footerTree: z.unknown().optional(),
 });
 
 type Params = { params: Promise<{ id: string }> };
@@ -36,7 +43,18 @@ export async function PATCH(request: Request, { params }: Params) {
   try {
     const { id } = await params;
     await requireProject(id, userId);
-    const project = await prisma.project.update({ where: { id }, data: parsed.data });
+
+    const { headerTree, footerTree, siteUrl, ...rest } = parsed.data;
+    const project = await prisma.project.update({
+      where: { id },
+      data: {
+        ...rest,
+        // Trailing slashes would double up when canonical URLs are built.
+        ...(siteUrl === undefined ? {} : { siteUrl: siteUrl.trim().replace(/\/+$/, '') || null }),
+        ...(headerTree === undefined ? {} : { headerTree: headerTree === null ? Prisma.DbNull : asJson(headerTree) }),
+        ...(footerTree === undefined ? {} : { footerTree: footerTree === null ? Prisma.DbNull : asJson(footerTree) }),
+      },
+    });
     return NextResponse.json({ project });
   } catch (error) {
     return toResponse(error);

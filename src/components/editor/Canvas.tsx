@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 
 import { compileCss, inLayer, BASE_CSS, LAYER_ORDER } from '@/lib/builder/css';
-import { renderNode, WIDGET_CSS } from '@/lib/builder/render';
+import { composePage, renderNode, WIDGET_CSS } from '@/lib/builder/render';
 import { RUNTIME_JS } from '@/lib/builder/runtime';
 import { canAcceptChild, type BuilderNode, type Breakpoint, ROOT_ID } from '@/lib/builder/types';
 import { findNode } from '@/lib/builder/tree';
@@ -16,6 +16,15 @@ export interface DropTarget {
 
 interface Props {
   tree: BuilderNode;
+  /**
+   * Global header/footer drawn around the page.
+   *
+   * Rendered so the canvas matches what ships, but never editable here: their
+   * nodes are absent from `tree`, so every lookup — selection, drop targeting
+   * — misses them by construction rather than by a guard that could be
+   * forgotten. They are edited by pointing the canvas at them instead.
+   */
+  chrome?: { header: BuilderNode | null; footer: BuilderNode | null };
   importedCss?: string | null;
   customCss?: string | null;
   externalStylesheets?: string[];
@@ -27,6 +36,8 @@ interface Props {
   onDelete: (id: string) => void;
   onUndo: () => void;
   onRedo: () => void;
+  /** Clipboard shortcuts pressed while focus is inside the canvas. */
+  onClipboard: (action: 'copy' | 'cut' | 'paste') => void;
 }
 
 /** Widths the canvas is constrained to per breakpoint. */
@@ -55,10 +66,24 @@ const EDITOR_CSS = `
 [data-ws-drop="before-x"] { box-shadow: -3px 0 0 0 #3f8f5a; }
 [data-ws-drop="after-x"] { box-shadow: 3px 0 0 0 #3f8f5a; }
 body { min-height: 100vh; }
+
+/* Global sections: visibly present, visibly not editable here. */
+[data-ws-locked="true"] { position: relative; }
+[data-ws-locked="true"]:hover { outline: 1px dashed rgba(140,138,132,.5) !important; }
+[data-ws="${ROOT_ID}"] > [data-ws-locked="true"]::after {
+  content: "Global — edit under Pages";
+  position: absolute; top: 6px; right: 6px; z-index: 2;
+  padding: 3px 8px; border-radius: 999px;
+  background: rgba(20,18,14,.82); color: #e8e4da;
+  font: 500 11px ui-sans-serif, system-ui, sans-serif; letter-spacing: -0.01em;
+  pointer-events: none; opacity: 0; transition: opacity 140ms;
+}
+[data-ws="${ROOT_ID}"] > [data-ws-locked="true"]:hover::after { opacity: 1; }
 `;
 
 export default function Canvas({
   tree,
+  chrome,
   importedCss,
   customCss,
   externalStylesheets,
@@ -70,6 +95,7 @@ export default function Canvas({
   onDelete,
   onUndo,
   onRedo,
+  onClipboard,
 }: Props) {
   const frameRef = useRef<HTMLIFrameElement>(null);
   const readyRef = useRef(false);
@@ -139,26 +165,34 @@ export default function Canvas({
     const doc = frameRef.current?.contentDocument;
     if (!doc || !readyRef.current) return;
 
+    // Globals are part of the document the canvas shows, so their styles must
+    // compile alongside the page's.
+    const composed = composePage(tree, chrome?.header, chrome?.footer);
+
     const page = doc.getElementById('ws-page');
     // Flattened to the previewed breakpoint: see CompileOptions.flattenTo.
-    if (page) page.textContent = compileCss(tree, { flattenTo: breakpoint });
+    if (page) page.textContent = compileCss(composed, { flattenTo: breakpoint });
 
     // Inline editing puts the caret in the DOM we're about to replace; skip
     // the re-render so typing isn't interrupted mid-word.
     if (doc.querySelector('[data-ws-editing="true"]')) return;
 
     const scroll = doc.documentElement.scrollTop;
-    doc.body.innerHTML = renderNode(tree, { editor: true });
+    doc.body.innerHTML = renderNode(composed, { editor: true });
     doc.documentElement.scrollTop = scroll;
 
-    // Elements are draggable so existing nodes can be re-ordered.
+    // Only nodes that belong to the editable tree can be dragged; the global
+    // header and footer are marked so they read as locked.
     doc.querySelectorAll('[data-ws]').forEach((el) => {
-      if (el.getAttribute('data-ws') !== ROOT_ID) el.setAttribute('draggable', 'true');
+      const id = el.getAttribute('data-ws');
+      if (!id || id === ROOT_ID) return;
+      if (findNode(tree, id)) el.setAttribute('draggable', 'true');
+      else el.setAttribute('data-ws-locked', 'true');
     });
 
     applySelection(doc, selectedId);
     (frameRef.current?.contentWindow as unknown as { wsBoot?: () => void })?.wsBoot?.();
-  }, [tree, selectedId, breakpoint]);
+  }, [tree, selectedId, breakpoint, chrome]);
 
   // Selection alone must not force a full re-render.
   useEffect(() => {
@@ -253,12 +287,23 @@ export default function Canvas({
 
     doc.addEventListener('keydown', (event) => {
       // Shortcuts fired while focus is inside the iframe never reach the
-      // parent window, so undo/redo has to be handled here too.
+      // parent window, so every one of them has to be handled here too.
       if (event.metaKey || event.ctrlKey) {
-        if (event.key.toLowerCase() === 'z') {
+        const key = event.key.toLowerCase();
+
+        if (key === 'z') {
           event.preventDefault();
           if (event.shiftKey) onRedoRef.current();
           else onUndoRef.current();
+          return;
+        }
+
+        // Not while inline-editing text, where these mean the usual thing.
+        if (doc.querySelector('[data-ws-editing="true"]')) return;
+
+        if (key === 'c' || key === 'x' || key === 'v') {
+          event.preventDefault();
+          onClipboardRef.current(key === 'c' ? 'copy' : key === 'x' ? 'cut' : 'paste');
         }
         return;
       }
@@ -287,6 +332,8 @@ export default function Canvas({
   onUndoRef.current = onUndo;
   const onRedoRef = useRef(onRedo);
   onRedoRef.current = onRedo;
+  const onClipboardRef = useRef(onClipboard);
+  onClipboardRef.current = onClipboard;
 
   return (
     <div className="flex h-full justify-center overflow-auto bg-[#0b0b0e] p-5">

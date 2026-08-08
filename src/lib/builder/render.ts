@@ -272,7 +272,22 @@ export function treeNeedsRuntime(node: BuilderNode): boolean {
   return node.children.some(treeNeedsRuntime);
 }
 
-export interface DocumentOptions extends RenderOptions {
+export interface SeoOptions {
+  /** Meta description and og:description. */
+  description?: string | null;
+  /** og:image / twitter:image. */
+  socialImage?: string | null;
+  /** Absolute URL of this page, for rel=canonical and og:url. */
+  canonical?: string | null;
+  /** Emits robots noindex. */
+  noIndex?: boolean;
+  /** Favicon for the generated site, as a data URL or path. */
+  favicon?: string | null;
+  /** Human-readable site name, for og:site_name. */
+  siteName?: string | null;
+}
+
+export interface DocumentOptions extends RenderOptions, SeoOptions {
   title: string;
   lang?: string;
   /** Stylesheet carried over from an imported template. */
@@ -287,6 +302,70 @@ export interface DocumentOptions extends RenderOptions {
   stylesheetHref?: string;
   /** Relative src of the external runtime instead of inline JS (export). */
   runtimeSrc?: string;
+}
+
+/**
+ * Builds the <head> metadata block.
+ *
+ * Social cards need og: and twitter: tags duplicated — no single tag is read
+ * by every platform — so both are emitted from the same values rather than
+ * relying on one falling back to the other.
+ */
+export function renderHead(opts: SeoOptions & { title: string }): string {
+  const tags: string[] = [];
+  const meta = (name: string, content: unknown) =>
+    `<meta name="${name}" content="${escapeAttr(content)}">`;
+  const property = (name: string, content: unknown) =>
+    `<meta property="${name}" content="${escapeAttr(content)}">`;
+
+  if (opts.description) {
+    tags.push(meta('description', opts.description));
+    tags.push(property('og:description', opts.description));
+    tags.push(meta('twitter:description', opts.description));
+  }
+
+  tags.push(property('og:title', opts.title));
+  tags.push(meta('twitter:title', opts.title));
+  tags.push(property('og:type', 'website'));
+  if (opts.siteName) tags.push(property('og:site_name', opts.siteName));
+
+  if (opts.socialImage) {
+    tags.push(property('og:image', opts.socialImage));
+    tags.push(meta('twitter:image', opts.socialImage));
+    // Without this, most clients render a small thumbnail instead of a card.
+    tags.push(meta('twitter:card', 'summary_large_image'));
+  } else {
+    tags.push(meta('twitter:card', 'summary'));
+  }
+
+  if (opts.canonical) {
+    tags.push(`<link rel="canonical" href="${escapeAttr(opts.canonical)}">`);
+    tags.push(property('og:url', opts.canonical));
+  }
+
+  if (opts.noIndex) tags.push(meta('robots', 'noindex, nofollow'));
+  if (opts.favicon) tags.push(`<link rel="icon" href="${escapeAttr(opts.favicon)}">`);
+
+  return tags.join('\n');
+}
+
+/**
+ * Splices the global header and footer around a page's own content.
+ *
+ * Producing one combined tree means CSS compilation, rendering and export all
+ * work on globals with no special-casing — they are simply part of the
+ * document by the time anything downstream sees them.
+ */
+export function composePage(
+  page: BuilderNode,
+  header?: BuilderNode | null,
+  footer?: BuilderNode | null,
+): BuilderNode {
+  if (!header && !footer) return page;
+  return {
+    ...page,
+    children: [...(header ? [header] : []), ...page.children, ...(footer ? [footer] : [])],
+  };
 }
 
 export function renderDocument(root: BuilderNode, opts: DocumentOptions): string {
@@ -309,6 +388,7 @@ export function renderDocument(root: BuilderNode, opts: DocumentOptions): string
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${escapeHtml(opts.title)}</title>
+${renderHead(opts)}
 ${styles}
 ${opts.headExtra ?? ''}
 </head>

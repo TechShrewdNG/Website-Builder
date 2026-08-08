@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { currentUserId } from '@/lib/auth';
+import { Prisma } from '@prisma/client';
+
 import { prisma } from '@/lib/db';
 import { requireProject } from '@/lib/projects';
 import { toResponse, unauthorized } from '@/lib/http';
@@ -37,7 +39,14 @@ export async function POST(request: Request, { params }: Params) {
       ),
       prisma.project.update({
         where: { id },
-        data: { published: true, publishedAt: new Date() },
+        data: {
+          published: true,
+          publishedAt: new Date(),
+          // Globals are snapshotted alongside pages, or a live site could
+          // show a published page inside an unpublished header.
+          publishedHeaderTree: project.headerTree ?? Prisma.DbNull,
+          publishedFooterTree: project.footerTree ?? Prisma.DbNull,
+        },
       }),
     ]);
 

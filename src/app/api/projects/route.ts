@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { currentUserId } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { asJson, emptyTree, starterTree, uniqueSlug } from '@/lib/projects';
+import { getTemplate } from '@/lib/builder/templates';
 
 const createSchema = z.object({
   name: z.string().trim().min(1).max(80),
@@ -17,6 +18,7 @@ const createSchema = z.object({
     })
     .optional(),
   starter: z.boolean().optional(),
+  templateId: z.string().max(40).optional(),
 });
 
 export async function GET() {
@@ -49,8 +51,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
   }
 
-  const { name, imported, starter } = parsed.data;
-  const tree = imported?.tree ?? (starter === false ? emptyTree() : starterTree());
+  const { name, imported, starter, templateId } = parsed.data;
+
+  // An import always wins: the user supplied real content, so a template
+  // would only overwrite it.
+  const template = imported ? undefined : templateId ? getTemplate(templateId) : undefined;
+  const built = template?.build();
+
+  const tree = imported?.tree ?? built?.page ?? (starter === false ? emptyTree() : starterTree());
 
   const project = await prisma.project.create({
     data: {
@@ -58,6 +66,8 @@ export async function POST(request: Request) {
       slug: await uniqueSlug(name),
       ownerId: userId,
       importedCss: imported?.css ?? null,
+      headerTree: built?.header ? asJson(built.header) : undefined,
+      footerTree: built?.footer ? asJson(built.footer) : undefined,
       theme: imported?.externalStylesheets?.length
         ? { externalStylesheets: imported.externalStylesheets }
         : undefined,

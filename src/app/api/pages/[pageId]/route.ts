@@ -14,6 +14,9 @@ const patchSchema = z.object({
     .regex(/^\/[a-z0-9\-/]*$/)
     .optional(),
   tree: z.unknown().optional(),
+  description: z.string().max(320).optional(),
+  socialImage: z.string().max(4_000_000).optional(),
+  noIndex: z.boolean().optional(),
 });
 
 type Params = { params: Promise<{ pageId: string }> };
@@ -57,8 +60,19 @@ export async function PATCH(request: Request, { params }: Params) {
         title: parsed.data.title,
         path,
         tree: parsed.data.tree === undefined ? undefined : asJson(parsed.data.tree),
+        description: parsed.data.description,
+        socialImage: parsed.data.socialImage,
+        noIndex: parsed.data.noIndex,
       },
-      select: { id: true, updatedAt: true, title: true, path: true },
+      select: {
+        id: true,
+        updatedAt: true,
+        title: true,
+        path: true,
+        description: true,
+        socialImage: true,
+        noIndex: true,
+      },
     });
 
     // Surfaces the project as recently worked on in the dashboard.

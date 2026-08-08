@@ -150,6 +150,31 @@ Known limits, surfaced as warnings at import time:
   contents into Project CSS. Absolute `https://` ones are carried through as
   `<link>` tags.
 
+### Global header and footer
+
+A site's header and footer live on the project, not duplicated per page, so an
+edit propagates by construction rather than by a sync step that could fail.
+`composePage()` splices them around a page's content, producing one tree — which
+means CSS compilation, rendering and export handle globals with no special
+casing. In the editor they're rendered around the page but marked locked: their
+nodes aren't in the editable tree, so selection and drop targeting miss them by
+construction, and they're edited by pointing the canvas at them from the Pages
+panel.
+
+### SEO and sharing
+
+Each page carries a description, social image and noindex flag. Published pages
+and exports emit `description`, the `og:` and `twitter:` families (no single tag
+is read by every platform), and a canonical URL. Exports also write
+`sitemap.xml` and `robots.txt` — the sitemap needs absolute URLs, so it appears
+only once the site's public URL is set under Site.
+
+### Revisions
+
+Snapshots are explicit — taken on demand, not on every autosave — so the list
+stays navigable. Restoring snapshots the current tree first, which makes the
+restore itself undoable.
+
 ### Widgets
 
 Layout: section, container, columns. Content: heading, text, image, button,
@@ -211,6 +236,7 @@ Browser checks need a running server and a registered account:
 npm run build && npm start
 npm run test:e2e                          # editor: selection, DnD, styles, autosave, publish
 npm run test:e2e:import path/to/page.html # import fidelity and override behaviour
+npm run test:e2e:features                 # globals, SEO, snapshots, media, clipboard
 ```
 
 These drive Chromium through Playwright and cover what unit tests can't:
@@ -241,5 +267,4 @@ Scoped honestly, since these are the obvious next asks:
 - Forms — there's no submission endpoint, so no form widget.
 - Global theme tokens (colour/font palettes) — the `Project.theme` column is
   reserved for this but only carries imported stylesheet links today.
-- Reusable/global sections, revision history beyond in-session undo, and
-  multi-user collaboration.
+- Multi-user collaboration.

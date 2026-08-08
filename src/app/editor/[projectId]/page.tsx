@@ -30,12 +30,19 @@ export default async function EditorPage({ params }: { params: Promise<{ project
         importedCss: project.importedCss,
         customCss: project.customCss,
         externalStylesheets: theme.externalStylesheets ?? [],
+        siteUrl: project.siteUrl,
+        faviconData: project.faviconData,
+        headerTree: project.headerTree as unknown as BuilderNode | null,
+        footerTree: project.footerTree as unknown as BuilderNode | null,
       }}
       pages={project.pages.map((page) => ({
         id: page.id,
         title: page.title,
         path: page.path,
         tree: page.tree as unknown as BuilderNode,
+        description: page.description,
+        socialImage: page.socialImage,
+        noIndex: page.noIndex,
       }))}
     />
   );

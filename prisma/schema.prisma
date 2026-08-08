@@ -79,6 +79,21 @@ model Project {
   // Fonts / colour tokens shown in the style panel, as JSON.
   theme       Json?
 
+  // Global sections. Stored on the project rather than duplicated per page,
+  // which is what makes an edit propagate everywhere by construction.
+  headerTree Json?
+  footerTree Json?
+  publishedHeaderTree Json?
+  publishedFooterTree Json?
+
+  /// Favicon for generated sites, as a data URL.
+  faviconData String? @db.Text
+
+  /// Final public origin of the exported site, e.g. https://example.com.
+  /// Canonical URLs and sitemap.xml need absolute URLs, and the host a .zip
+  /// ends up on is not knowable from this app.
+  siteUrl String?
+
   publishedAt DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -102,10 +117,18 @@ model Page {
   publishedTree Json?
   sortOrder Int     @default(0)
 
+  // --- SEO -----------------------------------------------------------------
+  description String?
+  /// Social card image (og:image), as a data URL or absolute URL.
+  socialImage String? @db.Text
+  /// Emits noindex, for pages that shouldn't reach search results.
+  noIndex     Boolean @default(false)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project   Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  revisions PageRevision[]
 
   @@unique([projectId, path])
   @@index([projectId])
@@ -124,4 +147,21 @@ model Asset {
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@index([projectId])
+}
+
+/// A point-in-time snapshot of a page's tree.
+///
+/// In-session undo dies on reload; this is what makes an edit recoverable
+/// tomorrow. Snapshots are taken on publish and on demand, not on every
+/// autosave, so the table tracks meaningful states rather than keystrokes.
+model PageRevision {
+  id        String   @id @default(cuid())
+  pageId    String
+  label     String?
+  tree      Json
+  createdAt DateTime @default(now())
+
+  page Page @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  @@index([pageId, createdAt])
 }

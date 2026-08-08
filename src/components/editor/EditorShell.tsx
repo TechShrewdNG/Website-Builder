@@ -7,12 +7,13 @@ import Canvas, { type DropTarget } from './Canvas';
 import Inspector from './Inspector';
 import LayerTree from './LayerTree';
 import PagesPanel, { type PageSummary } from './PagesPanel';
-import ProjectSettings from './ProjectSettings';
+import SitePanel from './SitePanel';
 import WidgetPalette from './WidgetPalette';
 import type { DragPayload } from './dragState';
 import Icon from '@/components/Icon';
 import { createNode } from '@/lib/builder/widgets';
 import {
+  createRoot,
   cloneWithNewIds,
   duplicateNode,
   findNode,
@@ -33,10 +34,17 @@ export interface EditorProject {
   importedCss: string | null;
   customCss: string | null;
   externalStylesheets: string[];
+  siteUrl: string | null;
+  faviconData: string | null;
+  headerTree: BuilderNode | null;
+  footerTree: BuilderNode | null;
 }
 
 export interface EditorPage extends PageSummary {
   tree: BuilderNode;
+  description: string | null;
+  socialImage: string | null;
+  noIndex: boolean;
 }
 
 interface Props {
@@ -46,13 +54,16 @@ interface Props {
 
 type SaveState = 'saved' | 'dirty' | 'saving' | 'error';
 
-type PanelKey = 'widgets' | 'layers' | 'pages' | 'settings';
+type PanelKey = 'widgets' | 'layers' | 'pages' | 'site';
+
+/** What the canvas is pointed at. */
+export type EditTarget = { kind: 'page' } | { kind: 'header' } | { kind: 'footer' };
 
 const LEFT_PANELS: { key: PanelKey }[] = [
   { key: 'widgets' },
   { key: 'layers' },
   { key: 'pages' },
-  { key: 'settings' },
+  { key: 'site' },
 ];
 
 /**
@@ -83,6 +94,12 @@ export default function EditorShell({ project: initialProject, pages: initialPag
   const [project, setProject] = useState(initialProject);
   const [pages, setPages] = useState(initialPages);
   const [activeId, setActiveId] = useState(initialPages[0]?.id ?? '');
+  // The canvas edits either a page or one of the two global sections.
+  const [target, setTarget] = useState<EditTarget>({ kind: 'page' });
+  const [globals, setGlobals] = useState<{ header: BuilderNode | null; footer: BuilderNode | null }>({
+    header: initialProject.headerTree,
+    footer: initialProject.footerTree,
+  });
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [breakpoint, setBreakpoint] = useState<Breakpoint>('desktop');
   const [panel, setPanel] = useState<PanelKey>('widgets');
@@ -93,23 +110,36 @@ export default function EditorShell({ project: initialProject, pages: initialPag
   // Undo/redo, per page: switching pages should not let you undo into another.
   const historyRef = useRef<Record<string, { past: BuilderNode[]; future: BuilderNode[] }>>({});
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const seoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const activePage = pages.find((page) => page.id === activeId) ?? pages[0];
-  const tree = activePage?.tree;
+
+  /** The tree the canvas is editing, which is not always a page's. */
+  const tree =
+    target.kind === 'page' ? activePage?.tree : globals[target.kind] ?? createRoot([createNode('section')]);
+
   const selectedNode = useMemo(
     () => (tree && selectedId ? findNode(tree, selectedId) : null),
     [tree, selectedId],
   );
 
+  /** Identifies the current tree for history and autosave bookkeeping. */
+  const targetKey = target.kind === 'page' ? activePage?.id ?? '' : target.kind;
+
   // --- persistence ---------------------------------------------------------
   const save = useCallback(
-    async (pageId: string, nextTree: BuilderNode) => {
+    async (key: string, nextTree: BuilderNode) => {
       setSaveState('saving');
       try {
-        const response = await fetch(`/api/pages/${pageId}`, {
+        // Globals live on the project; pages on the page.
+        const isGlobal = key === 'header' || key === 'footer';
+        const url = isGlobal ? `/api/projects/${initialProject.id}` : `/api/pages/${key}`;
+        const body = isGlobal ? { [`${key}Tree`]: nextTree } : { tree: nextTree };
+
+        const response = await fetch(url, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tree: nextTree }),
+          body: JSON.stringify(body),
         });
         if (!response.ok) throw new Error('save failed');
         setSaveState('saved');
@@ -117,14 +147,14 @@ export default function EditorShell({ project: initialProject, pages: initialPag
         setSaveState('error');
       }
     },
-    [],
+    [initialProject.id],
   );
 
   const scheduleSave = useCallback(
-    (pageId: string, nextTree: BuilderNode) => {
+    (key: string, nextTree: BuilderNode) => {
       setSaveState('dirty');
       if (saveTimer.current) clearTimeout(saveTimer.current);
-      saveTimer.current = setTimeout(() => void save(pageId, nextTree), AUTOSAVE_DELAY);
+      saveTimer.current = setTimeout(() => void save(key, nextTree), AUTOSAVE_DELAY);
     },
     [save],
   );
@@ -142,49 +172,60 @@ export default function EditorShell({ project: initialProject, pages: initialPag
   }, []);
 
   // --- tree mutation -------------------------------------------------------
+  /** Writes a tree back to wherever it came from. */
+  const applyTree = useCallback(
+    (next: BuilderNode) => {
+      if (target.kind === 'page') {
+        setPages((prev) => prev.map((page) => (page.id === targetKey ? { ...page, tree: next } : page)));
+      } else {
+        setGlobals((prev) => ({ ...prev, [target.kind]: next }));
+      }
+    },
+    [target.kind, targetKey],
+  );
+
   const commit = useCallback(
     (next: BuilderNode, options: { history?: boolean } = {}) => {
-      if (!activePage) return;
-      const pageId = activePage.id;
+      if (!tree || !targetKey) return;
 
       if (options.history !== false) {
-        const entry = historyRef.current[pageId] ?? { past: [], future: [] };
-        entry.past = [...entry.past, activePage.tree].slice(-HISTORY_LIMIT);
+        const entry = historyRef.current[targetKey] ?? { past: [], future: [] };
+        entry.past = [...entry.past, tree].slice(-HISTORY_LIMIT);
         entry.future = [];
-        historyRef.current[pageId] = entry;
+        historyRef.current[targetKey] = entry;
       }
 
-      setPages((prev) => prev.map((page) => (page.id === pageId ? { ...page, tree: next } : page)));
-      scheduleSave(pageId, next);
+      applyTree(next);
+      scheduleSave(targetKey, next);
     },
-    [activePage, scheduleSave],
+    [tree, targetKey, applyTree, scheduleSave],
   );
 
   const undo = useCallback(() => {
-    if (!activePage) return;
-    const entry = historyRef.current[activePage.id];
+    if (!tree || !targetKey) return;
+    const entry = historyRef.current[targetKey];
     if (!entry?.past.length) return;
 
     const previous = entry.past[entry.past.length - 1];
     entry.past = entry.past.slice(0, -1);
-    entry.future = [activePage.tree, ...entry.future].slice(0, HISTORY_LIMIT);
+    entry.future = [tree, ...entry.future].slice(0, HISTORY_LIMIT);
 
-    setPages((prev) => prev.map((page) => (page.id === activePage.id ? { ...page, tree: previous } : page)));
-    scheduleSave(activePage.id, previous);
-  }, [activePage, scheduleSave]);
+    applyTree(previous);
+    scheduleSave(targetKey, previous);
+  }, [tree, targetKey, applyTree, scheduleSave]);
 
   const redo = useCallback(() => {
-    if (!activePage) return;
-    const entry = historyRef.current[activePage.id];
+    if (!tree || !targetKey) return;
+    const entry = historyRef.current[targetKey];
     if (!entry?.future.length) return;
 
     const next = entry.future[0];
     entry.future = entry.future.slice(1);
-    entry.past = [...entry.past, activePage.tree].slice(-HISTORY_LIMIT);
+    entry.past = [...entry.past, tree].slice(-HISTORY_LIMIT);
 
-    setPages((prev) => prev.map((page) => (page.id === activePage.id ? { ...page, tree: next } : page)));
-    scheduleSave(activePage.id, next);
-  }, [activePage, scheduleSave]);
+    applyTree(next);
+    scheduleSave(targetKey, next);
+  }, [tree, targetKey, applyTree, scheduleSave]);
 
   // --- canvas interactions -------------------------------------------------
   const handleDrop = useCallback(
@@ -237,6 +278,31 @@ export default function EditorShell({ project: initialProject, pages: initialPag
     [tree, selectedNode, commit],
   );
 
+  /** Reorder or reparent from the outline, which reaches nodes a click can't. */
+  const handleLayerMove = useCallback(
+    (nodeId: string, targetId: string, position: 'before' | 'after' | 'inside') => {
+      if (!tree) return;
+
+      if (position === 'inside') {
+        const container = findNode(tree, targetId);
+        if (!container) return;
+        const next = moveNode(tree, nodeId, targetId, container.children.length);
+        if (next !== tree) commit(next);
+        return;
+      }
+
+      const parent = findParent(tree, targetId);
+      if (!parent) return;
+      const index =
+        parent.children.findIndex((child) => child.id === targetId) + (position === 'after' ? 1 : 0);
+
+      const next = moveNode(tree, nodeId, parent.id, index);
+      if (next === tree) setNotice("That widget can't go there.");
+      else commit(next);
+    },
+    [tree, commit],
+  );
+
   const handleTextEdit = useCallback(
     (id: string, value: string) => {
       if (!tree) return;
@@ -254,6 +320,65 @@ export default function EditorShell({ project: initialProject, pages: initialPag
       setSelectedId(null);
     },
     [tree, commit],
+  );
+
+  /**
+   * Node clipboard.
+   *
+   * A module-level ref rather than the system clipboard: a BuilderNode is a
+   * tree, not text, and round-tripping it through the OS clipboard would mean
+   * serialising it somewhere a paste into another app would dump JSON.
+   * Kept outside React state so copying never triggers a re-render.
+   */
+  const clipboard = useRef<BuilderNode | null>(null);
+
+  const copySelection = useCallback(() => {
+    if (!tree || !selectedId) return false;
+    const node = findNode(tree, selectedId);
+    if (!node || node.id === ROOT_ID) return false;
+    clipboard.current = JSON.parse(JSON.stringify(node)) as BuilderNode;
+    setNotice(`Copied ${node.type}`);
+    return true;
+  }, [tree, selectedId]);
+
+  const pasteClipboard = useCallback(() => {
+    const source = clipboard.current;
+    if (!tree || !source) return;
+
+    // Fresh ids, or pasting twice would put duplicate ids in one document and
+    // every generated CSS rule would target both.
+    const copy = cloneWithNewIds(source);
+
+    // Prefer pasting after the selection; fall back to inside it, then root.
+    const parent = selectedId ? findParent(tree, selectedId) : null;
+    let next = tree;
+
+    if (selectedId && parent) {
+      const index = parent.children.findIndex((child) => child.id === selectedId) + 1;
+      next = insertNode(tree, parent.id, copy, index);
+    }
+    if (next === tree && selectedId) next = insertNode(tree, selectedId, copy, 0);
+    if (next === tree) next = insertNode(tree, ROOT_ID, copy, tree.children.length);
+
+    if (next === tree) {
+      setNotice(`A ${copy.type} can't go there.`);
+      return;
+    }
+    commit(next);
+    setSelectedId(copy.id);
+  }, [tree, selectedId, commit]);
+
+  /** One clipboard entry point, shared by the window and the canvas iframe. */
+  const handleClipboard = useCallback(
+    (action: 'copy' | 'cut' | 'paste') => {
+      if (action === 'paste') {
+        pasteClipboard();
+        return;
+      }
+      if (!copySelection()) return;
+      if (action === 'cut' && selectedId) handleDelete(selectedId);
+    },
+    [copySelection, pasteClipboard, selectedId, handleDelete],
   );
 
   // --- keyboard shortcuts --------------------------------------------------
@@ -275,11 +400,26 @@ export default function EditorShell({ project: initialProject, pages: initialPag
         event.preventDefault();
         commit(duplicateNode(tree, selectedId));
       }
+
+      // Only intercept clipboard keys when the caret isn't in a text field,
+      // or copying from the inspector would copy the selected node instead.
+      const target = event.target as HTMLElement | null;
+      const typing =
+        target?.tagName === 'INPUT' ||
+        target?.tagName === 'TEXTAREA' ||
+        target?.isContentEditable === true;
+      if (typing) return;
+
+      const key = event.key.toLowerCase();
+      if (key === 'c' || key === 'x' || key === 'v') {
+        event.preventDefault();
+        handleClipboard(key === 'c' ? 'copy' : key === 'x' ? 'cut' : 'paste');
+      }
     };
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [undo, redo, save, activePage, selectedId, tree, commit]);
+  }, [undo, redo, save, activePage, selectedId, tree, commit, handleClipboard]);
 
   useEffect(() => {
     if (!notice) return;
@@ -288,17 +428,18 @@ export default function EditorShell({ project: initialProject, pages: initialPag
   }, [notice]);
 
   // --- pages ---------------------------------------------------------------
-  async function createPage(title: string, path: string) {
+  async function createPage(title: string, path: string, templateId: string) {
     const response = await fetch(`/api/projects/${project.id}/pages`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title, path }),
+      body: JSON.stringify({ title, path, templateId }),
     });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(payload.error ?? 'Could not add the page');
 
     setPages((prev) => [...prev, { ...payload.page, tree: payload.page.tree as BuilderNode }]);
     setActiveId(payload.page.id);
+    setTarget({ kind: 'page' });
     setSelectedId(null);
   }
 
@@ -312,6 +453,45 @@ export default function EditorShell({ project: initialProject, pages: initialPag
     setPages((prev) => prev.filter((page) => page.id !== id));
     if (activeId === id) setActiveId((prev) => pages.find((page) => page.id !== prev)?.id ?? '');
   }
+
+  const updateSeo = useCallback(
+    (patch: Partial<{ description: string | null; socialImage: string | null; noIndex: boolean }>) => {
+      const pageId = activePage?.id;
+      if (!pageId) return;
+
+      setPages((prev) => prev.map((page) => (page.id === pageId ? { ...page, ...patch } : page)));
+
+      if (seoTimer.current) clearTimeout(seoTimer.current);
+      seoTimer.current = setTimeout(() => {
+        void fetch(`/api/pages/${pageId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(patch),
+        });
+      }, AUTOSAVE_DELAY);
+    },
+    [activePage?.id],
+  );
+
+  const restoreRevision = useCallback(
+    async (revisionId: string) => {
+      const pageId = activePage?.id;
+      if (!pageId) return;
+
+      const response = await fetch(`/api/pages/${pageId}/revisions/${revisionId}`, { method: 'POST' });
+      if (!response.ok) {
+        setNotice('Could not restore that snapshot');
+        return;
+      }
+      const payload = await response.json();
+      const restored = payload.page.tree as BuilderNode;
+
+      setPages((prev) => prev.map((page) => (page.id === pageId ? { ...page, tree: restored } : page)));
+      setSelectedId(null);
+      setNotice('Snapshot restored');
+    },
+    [activePage?.id],
+  );
 
   async function togglePublish() {
     setPublishing(true);
@@ -449,21 +629,42 @@ export default function EditorShell({ project: initialProject, pages: initialPag
 
           <div className="min-h-0 flex-1">
             {panel === 'widgets' && <WidgetPalette onAdd={handleAdd} />}
-            {panel === 'layers' && <LayerTree tree={tree} selectedId={selectedId} onSelect={setSelectedId} />}
+            {panel === 'layers' && (
+              <LayerTree
+                tree={tree}
+                selectedId={selectedId}
+                onSelect={setSelectedId}
+                onMove={handleLayerMove}
+              />
+            )}
             {panel === 'pages' && (
               <PagesPanel
                 pages={pages.map(({ id, title, path }) => ({ id, title, path }))}
                 activeId={activeId}
+                target={target}
+                seo={{
+                  description: activePage.description,
+                  socialImage: activePage.socialImage,
+                  noIndex: activePage.noIndex,
+                }}
+                hasHeader={Boolean(globals.header)}
+                hasFooter={Boolean(globals.footer)}
                 onSelect={(id) => {
                   setActiveId(id);
                   setSelectedId(null);
                 }}
+                onTargetChange={(next) => {
+                  setTarget(next);
+                  setSelectedId(null);
+                }}
                 onCreate={createPage}
                 onDelete={deletePage}
+                onSeoChange={updateSeo}
+                onRestore={restoreRevision}
               />
             )}
-            {panel === 'settings' && (
-              <ProjectSettings
+            {panel === 'site' && (
+              <SitePanel
                 project={project}
                 page={{ id: activePage.id, title: activePage.title, path: activePage.path }}
                 onProjectChange={(patch) => setProject((prev) => ({ ...prev, ...patch }))}
@@ -479,6 +680,11 @@ export default function EditorShell({ project: initialProject, pages: initialPag
         <main className="min-w-0 flex-1">
           <Canvas
             tree={tree}
+            // Globals frame the page so the canvas matches what ships, but
+            // they stay read-only here: they're edited on their own target.
+            chrome={
+              target.kind === 'page' ? { header: globals.header, footer: globals.footer } : undefined
+            }
             importedCss={project.importedCss}
             customCss={project.customCss}
             externalStylesheets={project.externalStylesheets}
@@ -490,6 +696,7 @@ export default function EditorShell({ project: initialProject, pages: initialPag
             onDelete={handleDelete}
             onUndo={undo}
             onRedo={redo}
+            onClipboard={handleClipboard}
           />
         </main>
 
@@ -498,6 +705,7 @@ export default function EditorShell({ project: initialProject, pages: initialPag
           <Inspector
             node={selectedNode}
             projectId={project.id}
+            pages={pages.map(({ title, path }) => ({ title, path }))}
             breakpoint={breakpoint}
             onPropsChange={(patch) => selectedId && commit(setProps(tree, selectedId, patch))}
             onStyleChange={(patch: StyleMap) => selectedId && commit(setStyle(tree, selectedId, breakpoint, patch))}
