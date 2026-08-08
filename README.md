@@ -20,19 +20,24 @@ npm run db:push               # create the schema
 npm run dev
 ```
 
-`AUTH_SECRET` can be generated with `openssl rand -base64 32`.
+Those two variables are all that's required — `DATABASE_URL` for Postgres and
+`AUTH_SECRET` to sign session tokens (`openssl rand -base64 32`).
 
 Register an account at `/register`, then create a site from `/dashboard`.
 
 ## Deploying to Vercel
 
-Set these environment variables on the project:
+Only two environment variables are required on the project:
 
-| Variable       | Notes                                                          |
-| -------------- | -------------------------------------------------------------- |
-| `DATABASE_URL` | Must be a **pooled** connection string (see below)              |
-| `AUTH_SECRET`  | `openssl rand -base64 32`                                       |
-| `NEXTAUTH_URL` | Your deployment URL, e.g. `https://your-app.vercel.app`         |
+| Variable       | Notes                                              |
+| -------------- | -------------------------------------------------- |
+| `DATABASE_URL` | Must be a **pooled** connection string (see below) |
+| `AUTH_SECRET`  | `openssl rand -base64 32`                          |
+
+There is deliberately no URL variable. `trustHost` is set, so Auth.js infers
+its own origin from the incoming request and the app works unchanged across
+preview and production deployments. Set `AUTH_URL` only if you mount the app
+under a path prefix, or sit behind a proxy that rewrites the `Host` header.
 
 Serverless functions open a connection per invocation, so a direct Postgres URL
 will exhaust the connection limit under load. Use your provider's pooler —
