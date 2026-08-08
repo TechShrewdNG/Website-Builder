@@ -16,7 +16,7 @@ depend on it.
 ```bash
 npm install
 cp .env.example .env          # set DATABASE_URL and AUTH_SECRET
-npm run db:push               # create the schema
+npm run db:migrate            # create the schema
 npm run dev
 ```
 
@@ -44,10 +44,23 @@ will exhaust the connection limit under load. Use your provider's pooler —
 Neon's pooled endpoint, Supabase's port 6543, or PgBouncer — and append
 `?pgbouncer=true&connection_limit=1` for PgBouncer-style poolers.
 
-`prisma generate` runs in both `postinstall` and `build`, which is what keeps
-the client from going stale against Vercel's dependency cache. Run
-`npm run db:push` (or a migration) against the production database once before
-the first deploy; the build itself never touches the database.
+The build applies migrations itself (`prisma migrate deploy`, via
+`scripts/migrate.mjs`), so a fresh database is set up by the first deploy with
+nothing to run by hand. It's idempotent — later deploys report "no pending
+migrations" and move on.
+
+If `DATABASE_URL` is a transaction-mode pooler, migrations may fail: they need
+a session-level advisory lock that PgBouncer-style poolers can't hold. Set
+`DIRECT_URL` to the direct, non-pooled connection string and it will be used
+for the migration step only, with the app still using the pooled URL at
+runtime. `SKIP_DB_MIGRATE=1` opts out entirely.
+
+| Variable      | When you need it                                     |
+| ------------- | ---------------------------------------------------- |
+| `DIRECT_URL`  | Optional — only if your pooler rejects migrations    |
+
+`prisma generate` runs in both `postinstall` and `build`, which keeps the
+client from going stale against Vercel's dependency cache.
 
 Dependencies are pinned and `npm audit` reports zero vulnerabilities. Two
 `overrides` pin `postcss` and `sharp` inside Next's own dependency tree, which
@@ -67,10 +80,13 @@ three things a fresh deploy usually gets wrong is actually wrong:
     "database": "The database is reachable but its schema is missing. Run `npm run db:push`..." } }
 ```
 
-The most common cause of "I can't create an account" is the schema never having
-been pushed — the build succeeds without touching the database, so nothing fails
-until the first query. Run `npm run db:push` against the production
-`DATABASE_URL` once.
+"I can't create an account" almost always means the schema is missing. Deploys
+now apply migrations during the build, so redeploying is usually the fix. To
+apply them by hand instead:
+
+```bash
+DATABASE_URL="<production url>" npm run db:migrate
+```
 
 API routes return these as real messages with a 503, so the cause also shows up
 in the sign-up form itself rather than as a generic failure.
