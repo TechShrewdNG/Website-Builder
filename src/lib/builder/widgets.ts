@@ -6,6 +6,7 @@
  * Style controls are universal and live in the style panel instead.
  */
 
+import type { IconName } from '@/components/Icon';
 import { emptyStyles, type BuilderNode, type StyleMap, type WidgetType } from './types';
 
 export type ControlType =
@@ -38,7 +39,7 @@ export interface WidgetDefinition {
   label: string;
   /** Grouping in the palette. */
   category: 'layout' | 'content' | 'dynamic';
-  icon: string;
+  icon: IconName;
   /** Hidden from the palette (created indirectly, e.g. `column`). */
   internal?: boolean;
   defaultProps: Record<string, unknown>;
@@ -68,7 +69,7 @@ export const WIDGETS: Record<WidgetType, WidgetDefinition> = {
     type: 'section',
     label: 'Section',
     category: 'layout',
-    icon: '▭',
+    icon: 'section',
     defaultProps: { tag: 'section', contentWidth: 'boxed', maxWidth: '1140px' },
     defaultStyles: { 'padding-top': '60px', 'padding-bottom': '60px' },
     controls: [
@@ -94,7 +95,7 @@ export const WIDGETS: Record<WidgetType, WidgetDefinition> = {
     type: 'container',
     label: 'Container',
     category: 'layout',
-    icon: '▢',
+    icon: 'container',
     defaultProps: { tag: 'div' },
     defaultStyles: { display: 'flex', 'flex-direction': 'column', gap: '16px' },
     controls: [
@@ -110,7 +111,7 @@ export const WIDGETS: Record<WidgetType, WidgetDefinition> = {
     type: 'columns',
     label: 'Columns',
     category: 'layout',
-    icon: '◫',
+    icon: 'columns',
     defaultProps: { count: 2, gap: '24px', stackOn: 'mobile' },
     controls: [
       { key: 'gap', label: 'Gap', type: 'text', placeholder: '24px' },
@@ -130,7 +131,7 @@ export const WIDGETS: Record<WidgetType, WidgetDefinition> = {
     type: 'column',
     label: 'Column',
     category: 'layout',
-    icon: '│',
+    icon: 'columns',
     internal: true,
     defaultProps: { width: '' },
     controls: [
@@ -149,7 +150,7 @@ export const WIDGETS: Record<WidgetType, WidgetDefinition> = {
     type: 'heading',
     label: 'Heading',
     category: 'content',
-    icon: 'H',
+    icon: 'heading',
     defaultProps: { text: 'Your headline here', level: 'h2' },
     defaultStyles: { 'font-size': '32px', 'font-weight': '700', 'line-height': '1.25' },
     controls: [
@@ -166,7 +167,7 @@ export const WIDGETS: Record<WidgetType, WidgetDefinition> = {
     type: 'text',
     label: 'Text',
     category: 'content',
-    icon: '¶',
+    icon: 'text',
     defaultProps: {
       html: '<p>Write something worth reading. Double-click on the canvas to edit this text inline.</p>',
     },
@@ -177,7 +178,7 @@ export const WIDGETS: Record<WidgetType, WidgetDefinition> = {
     type: 'image',
     label: 'Image',
     category: 'content',
-    icon: '🖼',
+    icon: 'image',
     defaultProps: { src: '', alt: '', href: '', target: '_self', loading: 'lazy' },
     defaultStyles: { 'max-width': '100%', height: 'auto' },
     controls: [
@@ -199,7 +200,7 @@ export const WIDGETS: Record<WidgetType, WidgetDefinition> = {
     type: 'button',
     label: 'Button',
     category: 'content',
-    icon: '⬢',
+    icon: 'button',
     defaultProps: { text: 'Click me', href: '#', target: '_self' },
     defaultStyles: {
       display: 'inline-block',
@@ -219,7 +220,7 @@ export const WIDGETS: Record<WidgetType, WidgetDefinition> = {
     type: 'icon',
     label: 'Icon',
     category: 'content',
-    icon: '★',
+    icon: 'star',
     defaultProps: { glyph: '★', href: '' },
     defaultStyles: { 'font-size': '32px', 'line-height': '1' },
     controls: [
@@ -231,7 +232,7 @@ export const WIDGETS: Record<WidgetType, WidgetDefinition> = {
     type: 'divider',
     label: 'Divider',
     category: 'content',
-    icon: '─',
+    icon: 'divider',
     defaultProps: {},
     defaultStyles: { 'border-top-width': '1px', 'border-top-style': 'solid', 'border-top-color': '#e5e7eb' },
     controls: [],
@@ -240,7 +241,7 @@ export const WIDGETS: Record<WidgetType, WidgetDefinition> = {
     type: 'spacer',
     label: 'Spacer',
     category: 'content',
-    icon: '↕',
+    icon: 'spacer',
     defaultProps: { height: '48px' },
     controls: [{ key: 'height', label: 'Height', type: 'text', placeholder: '48px' }],
   },
@@ -248,7 +249,7 @@ export const WIDGETS: Record<WidgetType, WidgetDefinition> = {
     type: 'link',
     label: 'Link box',
     category: 'content',
-    icon: '🔗',
+    icon: 'link',
     defaultProps: { href: '#', target: '_self' },
     defaultStyles: { display: 'block', 'text-decoration': 'none', color: 'inherit' },
     controls: LINK_CONTROLS,
@@ -259,7 +260,7 @@ export const WIDGETS: Record<WidgetType, WidgetDefinition> = {
     type: 'slider',
     label: 'Slider',
     category: 'dynamic',
-    icon: '⇄',
+    icon: 'slider',
     needsRuntime: true,
     defaultProps: {
       autoplay: false,
@@ -295,7 +296,7 @@ export const WIDGETS: Record<WidgetType, WidgetDefinition> = {
     type: 'tabs',
     label: 'Tabs',
     category: 'dynamic',
-    icon: '▤',
+    icon: 'tabs',
     needsRuntime: true,
     defaultProps: {
       items: [
@@ -320,7 +321,7 @@ export const WIDGETS: Record<WidgetType, WidgetDefinition> = {
     type: 'accordion',
     label: 'Accordion',
     category: 'dynamic',
-    icon: '☰',
+    icon: 'accordion',
     needsRuntime: true,
     defaultProps: {
       allowMultiple: false,
@@ -347,7 +348,7 @@ export const WIDGETS: Record<WidgetType, WidgetDefinition> = {
     type: 'counter',
     label: 'Counter',
     category: 'dynamic',
-    icon: '#',
+    icon: 'counter',
     needsRuntime: true,
     defaultProps: { start: 0, end: 100, duration: 2000, prefix: '', suffix: '+' },
     defaultStyles: { 'font-size': '48px', 'font-weight': '700' },
@@ -365,7 +366,7 @@ export const WIDGETS: Record<WidgetType, WidgetDefinition> = {
     type: 'html',
     label: 'HTML',
     category: 'content',
-    icon: '</>',
+    icon: 'code',
     defaultProps: { html: '<!-- paste markup here -->' },
     controls: [
       {

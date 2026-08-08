@@ -173,6 +173,26 @@ shared `assets/styles.css`, and `assets/builder.js` if needed. Data-URL images
 are extracted back into real files under `assets/images/` and deduplicated.
 Asset paths are made relative to each page's depth, so it works on any host.
 
+## Builder UI
+
+The chrome is styled from one set of tokens in `src/app/globals.css`, exposed to
+Tailwind as RGB channel triplets so opacity modifiers (`bg-accent/15`) work
+against them. Warm near-black surfaces, a single amber accent, and Geist for
+both text and numerals — the style panel uses tabular figures so values line up
+column to column.
+
+Icons are a hand-drawn set in `src/components/Icon.tsx`, one 1.6 stroke weight
+on a 24-unit grid. They replaced a mix of unicode symbols and colour emoji that
+rendered at four different weights.
+
+None of this reaches a generated site. Exported and published pages are styled
+entirely by the CSS the builder emits, which never assumes Tailwind or these
+variables exist — there is a test asserting the export contains no editor-only
+markup.
+
+`node test/screenshots.mjs <outDir>` captures every surface for reviewing
+design changes.
+
 ## Tests
 
 ```bash

@@ -10,6 +10,7 @@ import PagesPanel, { type PageSummary } from './PagesPanel';
 import ProjectSettings from './ProjectSettings';
 import WidgetPalette from './WidgetPalette';
 import type { DragPayload } from './dragState';
+import Icon from '@/components/Icon';
 import { createNode } from '@/lib/builder/widgets';
 import {
   cloneWithNewIds,
@@ -45,6 +46,36 @@ interface Props {
 
 type SaveState = 'saved' | 'dirty' | 'saving' | 'error';
 
+type PanelKey = 'widgets' | 'layers' | 'pages' | 'settings';
+
+const LEFT_PANELS: { key: PanelKey }[] = [
+  { key: 'widgets' },
+  { key: 'layers' },
+  { key: 'pages' },
+  { key: 'settings' },
+];
+
+/**
+ * Autosave status. Deliberately low-contrast until something needs attention:
+ * "saved" is the state it sits in almost always, and a permanently bright
+ * badge there trains people to ignore the one case that matters.
+ */
+function SaveIndicator({ state }: { state: SaveState }) {
+  const config = {
+    saved: { label: 'Saved', dot: 'bg-positive/70', text: 'text-faint' },
+    dirty: { label: 'Unsaved changes', dot: 'bg-muted', text: 'text-muted' },
+    saving: { label: 'Saving…', dot: 'bg-accent animate-pulse', text: 'text-muted' },
+    error: { label: "Couldn't save — retrying on next edit", dot: 'bg-danger', text: 'text-danger' },
+  }[state];
+
+  return (
+    <span className={`flex shrink-0 items-center gap-1.5 text-[11px] ${config.text}`} role="status">
+      <span className={`h-1.5 w-1.5 rounded-full ${config.dot}`} aria-hidden="true" />
+      {config.label}
+    </span>
+  );
+}
+
 const AUTOSAVE_DELAY = 1200;
 const HISTORY_LIMIT = 60;
 
@@ -54,7 +85,7 @@ export default function EditorShell({ project: initialProject, pages: initialPag
   const [activeId, setActiveId] = useState(initialPages[0]?.id ?? '');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [breakpoint, setBreakpoint] = useState<Breakpoint>('desktop');
-  const [panel, setPanel] = useState<'widgets' | 'layers' | 'pages' | 'settings'>('widgets');
+  const [panel, setPanel] = useState<PanelKey>('widgets');
   const [saveState, setSaveState] = useState<SaveState>('saved');
   const [publishing, setPublishing] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -307,64 +338,87 @@ export default function EditorShell({ project: initialProject, pages: initialPag
   }
 
   if (!activePage || !tree) {
-    return <p className="p-8 text-sm text-neutral-400">This project has no pages.</p>;
+    return <p className="p-8 text-sm text-muted">This project has no pages.</p>;
   }
 
   return (
     <div className="flex h-screen flex-col overflow-hidden">
       {/* ---- top bar ---- */}
-      <header className="flex shrink-0 items-center gap-3 border-b border-edge bg-panel px-3 py-2">
-        <Link href="/dashboard" className="text-sm text-neutral-400 hover:text-white">
-          ←
+      <header className="relative z-20 flex shrink-0 items-center gap-3 border-b border-edge bg-panel px-3 py-2.5">
+        <Link
+          href="/dashboard"
+          title="Back to your sites"
+          className="flex h-8 w-8 items-center justify-center rounded-md text-muted transition-colors duration-150 hover:bg-panelRaised hover:text-white"
+        >
+          <Icon name="arrowLeft" size={17} />
         </Link>
-        <span className="truncate text-sm font-medium">{project.name}</span>
 
-        <span className="text-xs text-neutral-500">
-          {
-            {
-              saved: 'All changes saved',
-              dirty: 'Unsaved changes',
-              saving: 'Saving…',
-              error: 'Save failed — retrying on next edit',
-            }[saveState]
-          }
-        </span>
+        <div className="flex min-w-0 items-baseline gap-2.5">
+          <span className="truncate text-[13px] font-semibold text-white">{project.name}</span>
+          <SaveIndicator state={saveState} />
+        </div>
 
-        <div className="ml-auto flex items-center gap-1">
-          <div className="mr-2 flex rounded border border-edge">
+        <div className="ml-auto flex items-center gap-1.5">
+          {/* Breakpoint switch: an icon each, since the labels read as tabs. */}
+          <div className="flex items-center gap-0.5 rounded-lg border border-edge bg-panelRaised p-0.5">
             {BREAKPOINTS.map((value) => (
               <button
                 key={value}
                 type="button"
                 onClick={() => setBreakpoint(value)}
                 title={`${value} styles`}
-                className={`px-2.5 py-1 text-xs capitalize ${
-                  breakpoint === value ? 'bg-accent text-white' : 'text-neutral-400 hover:text-white'
+                aria-pressed={breakpoint === value}
+                className={`flex h-7 w-8 items-center justify-center rounded-md transition-colors duration-150 ${
+                  breakpoint === value
+                    ? 'bg-accent text-accentInk'
+                    : 'text-muted hover:bg-[#24242b] hover:text-white'
                 }`}
               >
-                {value}
+                <Icon name={value} size={16} />
               </button>
             ))}
           </div>
 
-          <button type="button" className="ws-btn px-2 py-1 text-xs" onClick={undo} title="Undo (Ctrl/Cmd+Z)">
-            Undo
+          <div className="mx-1 h-6 w-px bg-edge" aria-hidden="true" />
+
+          <button
+            type="button"
+            className="flex h-8 w-8 items-center justify-center rounded-md text-muted transition-colors duration-150 hover:bg-panelRaised hover:text-white"
+            onClick={undo}
+            title="Undo (Ctrl/Cmd+Z)"
+          >
+            <Icon name="undo" size={17} />
           </button>
-          <button type="button" className="ws-btn px-2 py-1 text-xs" onClick={redo} title="Redo (Ctrl/Cmd+Shift+Z)">
-            Redo
+          <button
+            type="button"
+            className="flex h-8 w-8 items-center justify-center rounded-md text-muted transition-colors duration-150 hover:bg-panelRaised hover:text-white"
+            onClick={redo}
+            title="Redo (Ctrl/Cmd+Shift+Z)"
+          >
+            <Icon name="redo" size={17} />
           </button>
 
-          <a className="ws-btn px-2 py-1 text-xs" href={`/api/projects/${project.id}/export`}>
+          <div className="mx-1 h-6 w-px bg-edge" aria-hidden="true" />
+
+          <a className="ws-btn h-8 px-2.5 text-[13px]" href={`/api/projects/${project.id}/export`}>
+            <Icon name="download" size={15} />
             Export .zip
           </a>
 
           {project.published && (
-            <Link className="ws-btn px-2 py-1 text-xs" href={`/s/${project.slug}`} target="_blank">
+            <Link className="ws-btn h-8 px-2.5 text-[13px]" href={`/s/${project.slug}`} target="_blank">
+              <Icon name="external" size={15} />
               View live
             </Link>
           )}
 
-          <button type="button" className="ws-btn-primary px-3 py-1 text-xs" onClick={togglePublish} disabled={publishing}>
+          <button
+            type="button"
+            className="ws-btn-primary h-8 px-3 text-[13px]"
+            onClick={togglePublish}
+            disabled={publishing}
+          >
+            <Icon name="globe" size={15} />
             {publishing ? 'Working…' : project.published ? 'Unpublish' : 'Publish'}
           </button>
         </div>
@@ -372,18 +426,23 @@ export default function EditorShell({ project: initialProject, pages: initialPag
 
       <div className="flex min-h-0 flex-1">
         {/* ---- left panel ---- */}
-        <aside className="flex w-64 shrink-0 flex-col border-r border-edge bg-panel">
-          <nav className="flex shrink-0 border-b border-edge">
-            {(['widgets', 'layers', 'pages', 'settings'] as const).map((value) => (
+        <aside className="flex w-[264px] shrink-0 flex-col border-r border-edge bg-panel">
+          <nav className="flex shrink-0 gap-0.5 border-b border-edge px-2 py-1.5">
+            {/* Labels only: four icon+label pairs overflow 264px, and these
+                words are short enough to be their own affordance. */}
+            {LEFT_PANELS.map(({ key }) => (
               <button
-                key={value}
+                key={key}
                 type="button"
-                onClick={() => setPanel(value)}
-                className={`flex-1 py-2 text-[11px] capitalize transition-colors ${
-                  panel === value ? 'border-b-2 border-accent text-white' : 'text-neutral-500 hover:text-white'
+                onClick={() => setPanel(key)}
+                aria-pressed={panel === key}
+                className={`flex-1 rounded-md py-1.5 text-[12px] font-medium capitalize transition-colors duration-150 ${
+                  panel === key
+                    ? 'bg-panelRaised text-white'
+                    : 'text-muted hover:bg-panelRaised/60 hover:text-neutral-200'
                 }`}
               >
-                {value}
+                {key}
               </button>
             ))}
           </nav>
@@ -435,7 +494,7 @@ export default function EditorShell({ project: initialProject, pages: initialPag
         </main>
 
         {/* ---- right panel ---- */}
-        <aside className="w-72 shrink-0 border-l border-edge bg-panel">
+        <aside className="w-[300px] shrink-0 border-l border-edge bg-panel">
           <Inspector
             node={selectedNode}
             projectId={project.id}
@@ -451,7 +510,7 @@ export default function EditorShell({ project: initialProject, pages: initialPag
       {notice && (
         <div
           role="status"
-          className="pointer-events-none fixed bottom-4 left-1/2 -translate-x-1/2 rounded bg-black/85 px-4 py-2 text-sm text-white shadow-lg"
+          className="pointer-events-none fixed bottom-5 left-1/2 z-50 -translate-x-1/2 animate-ws-rise rounded-lg border border-edgeStrong bg-panelRaised px-4 py-2.5 text-[13px] text-white shadow-[var(--ws-shadow-lg)]"
         >
           {notice}
         </div>

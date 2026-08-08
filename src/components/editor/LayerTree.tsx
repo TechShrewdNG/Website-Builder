@@ -2,6 +2,7 @@
 
 import { WIDGETS } from '@/lib/builder/widgets';
 import { ROOT_ID, type BuilderNode } from '@/lib/builder/types';
+import Icon from '@/components/Icon';
 
 interface Props {
   tree: BuilderNode;
@@ -14,7 +15,11 @@ export default function LayerTree({ tree, selectedId, onSelect }: Props) {
   return (
     <div className="thin-scroll h-full overflow-y-auto p-2 text-sm">
       {tree.children.length === 0 ? (
-        <p className="p-2 text-xs text-neutral-500">The page is empty. Drop a section onto the canvas.</p>
+        <p className="px-2 py-4 text-center text-[12px] leading-relaxed text-faint">
+          This page is empty.
+          <br />
+          Drop a section onto the canvas.
+        </p>
       ) : (
         tree.children.map((child) => (
           <Row key={child.id} node={child} depth={0} selectedId={selectedId} onSelect={onSelect} />
@@ -43,14 +48,18 @@ function Row({
       <button
         type="button"
         onClick={() => onSelect(node.id)}
-        style={{ paddingLeft: 8 + depth * 12 }}
-        className={`flex w-full items-center gap-2 rounded py-1 pr-2 text-left text-xs transition-colors ${
-          selectedId === node.id ? 'bg-accent/25 text-white' : 'text-neutral-400 hover:bg-panelAlt hover:text-white'
+        style={{ paddingLeft: 6 + depth * 13 }}
+        className={`group flex w-full items-center gap-2 rounded-md py-1.5 pr-2 text-left text-[12px] transition-colors duration-150 ${
+          selectedId === node.id
+            ? 'bg-accent/12 text-white'
+            : 'text-muted hover:bg-panelRaised hover:text-neutral-200'
         }`}
       >
-        <span aria-hidden="true" className="w-4 shrink-0 text-center">
-          {definition.icon}
-        </span>
+        <Icon
+          name={definition.icon}
+          size={14}
+          className={`shrink-0 ${selectedId === node.id ? 'text-accent' : 'text-faint group-hover:text-muted'}`}
+        />
         <span className="truncate">{label}</span>
       </button>
 

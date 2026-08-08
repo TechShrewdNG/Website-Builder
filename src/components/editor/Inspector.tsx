@@ -5,6 +5,7 @@ import { useRef, useState } from 'react';
 import { WIDGETS, type Control } from '@/lib/builder/widgets';
 import type { BuilderNode, Breakpoint, StyleMap } from '@/lib/builder/types';
 import StyleControls from './StyleControls';
+import Icon from '@/components/Icon';
 
 interface Props {
   node: BuilderNode | null;
@@ -31,10 +32,16 @@ export default function Inspector({
 
   if (!node) {
     return (
-      <p className="p-4 text-sm text-neutral-500">
-        Select an element on the canvas to edit it. Double-click a heading or text block to type
-        directly into it.
-      </p>
+      <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
+        <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-edge bg-panelRaised text-muted">
+          <Icon name="pencil" size={19} />
+        </span>
+        <p className="text-[13px] font-medium text-neutral-300">Nothing selected</p>
+        <p className="max-w-[210px] text-[12px] leading-relaxed text-faint">
+          Click any element on the canvas to edit it, or double-click a heading to type straight
+          into the page.
+        </p>
+      </div>
     );
   }
 
@@ -42,27 +49,51 @@ export default function Inspector({
 
   return (
     <div className="flex h-full flex-col">
-      <header className="border-b border-edge px-3 py-2">
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-medium">{definition.label}</span>
-          <div className="flex gap-1">
-            <button type="button" className="ws-btn px-2 py-1 text-xs" onClick={onDuplicate}>
-              Duplicate
+      <header className="border-b border-edge px-3 py-2.5">
+        <div className="flex items-center justify-between gap-2">
+          <span className="flex min-w-0 items-center gap-2">
+            <Icon name={definition.icon} size={16} className="shrink-0 text-accent" />
+            <span className="truncate text-[13px] font-semibold text-white">{definition.label}</span>
+          </span>
+
+          <div className="flex shrink-0 items-center gap-0.5">
+            <button
+              type="button"
+              title="Duplicate (Ctrl/Cmd+D)"
+              aria-label="Duplicate"
+              className="flex h-7 w-7 items-center justify-center rounded-md text-muted transition-colors duration-150 hover:bg-panelRaised hover:text-white"
+              onClick={onDuplicate}
+            >
+              <Icon name="copy" size={15} />
             </button>
-            <button type="button" className="ws-btn px-2 py-1 text-xs" onClick={onDelete}>
-              Delete
+            <button
+              type="button"
+              title="Delete"
+              aria-label="Delete"
+              className="flex h-7 w-7 items-center justify-center rounded-md text-muted transition-colors duration-150 hover:bg-danger/10 hover:text-danger"
+              onClick={onDelete}
+            >
+              <Icon name="trash" size={15} />
             </button>
           </div>
         </div>
 
-        <div className="mt-2 flex gap-1">
+        {/* Sliding indicator rather than two filled pills, so the inactive tab
+            stays legible instead of reading as disabled. */}
+        <div className="relative mt-2.5 flex rounded-lg bg-[#121216] p-0.5">
+          <span
+            aria-hidden="true"
+            className="absolute inset-y-0.5 w-[calc(50%-2px)] rounded-md bg-panelRaised shadow-[var(--ws-shadow-sm)] transition-transform duration-200 ease-out"
+            style={{ transform: tab === 'content' ? 'translateX(2px)' : 'translateX(calc(100% + 2px))' }}
+          />
           {(['content', 'style'] as const).map((value) => (
             <button
               key={value}
               type="button"
               onClick={() => setTab(value)}
-              className={`flex-1 rounded px-2 py-1 text-xs capitalize transition-colors ${
-                tab === value ? 'bg-accent text-white' : 'bg-panelAlt text-neutral-400 hover:text-white'
+              aria-pressed={tab === value}
+              className={`relative z-10 flex-1 rounded-md py-1.5 text-[12px] font-medium capitalize transition-colors duration-150 ${
+                tab === value ? 'text-white' : 'text-muted hover:text-neutral-300'
               }`}
             >
               {value}
@@ -74,7 +105,7 @@ export default function Inspector({
       <div className="thin-scroll flex-1 overflow-y-auto p-3">
         {tab === 'content' ? (
           definition.controls.length === 0 ? (
-            <p className="text-sm text-neutral-500">This widget has no content options.</p>
+            <p className="text-[12px] text-faint">This widget has no content options — style it instead.</p>
           ) : (
             <div className="flex flex-col gap-3">
               {definition.controls.map((control) => (
@@ -118,10 +149,10 @@ function ControlField({
   switch (control.type) {
     case 'toggle':
       return (
-        <label className="flex items-center gap-2 text-sm">
+        <label className="flex cursor-pointer items-center gap-2.5 rounded-md py-0.5 text-[13px] text-neutral-300 transition-colors hover:text-white">
           <input
             type="checkbox"
-            className="h-4 w-4 accent-indigo-500"
+            className="h-4 w-4 accent-[rgb(215_155_60)]"
             checked={Boolean(value)}
             onChange={(event) => onChange(event.target.checked)}
           />
@@ -162,11 +193,11 @@ function ControlField({
         <label className="block">
           <span className="ws-label">{control.label}</span>
           <textarea
-            className="ws-field min-h-24 font-mono text-xs"
+            className="ws-field min-h-24 font-mono text-[11px] leading-relaxed"
             value={String(value ?? '')}
             onChange={(event) => onChange(event.target.value)}
           />
-          {control.help && <p className="mt-1 text-[11px] text-neutral-500">{control.help}</p>}
+          {control.help && <p className="mt-1.5 text-[11px] leading-relaxed text-faint">{control.help}</p>}
         </label>
       );
 
@@ -183,8 +214,10 @@ function ControlField({
                 key={glyph}
                 type="button"
                 onClick={() => onChange(glyph)}
-                className={`h-8 w-8 rounded border text-base ${
-                  value === glyph ? 'border-accent bg-accent/20' : 'border-edge bg-panelAlt hover:border-neutral-500'
+                className={`h-8 w-8 rounded-md border text-base transition-colors duration-150 ${
+                  value === glyph
+                    ? 'border-accent bg-accent/15 text-accent'
+                    : 'border-edge bg-panelRaised text-neutral-300 hover:border-edgeStrong hover:text-white'
                 }`}
               >
                 {glyph}
@@ -220,7 +253,7 @@ function ControlField({
             placeholder={control.placeholder}
             onChange={(event) => onChange(event.target.value)}
           />
-          {control.help && <p className="mt-1 text-[11px] text-neutral-500">{control.help}</p>}
+          {control.help && <p className="mt-1.5 text-[11px] leading-relaxed text-faint">{control.help}</p>}
         </label>
       );
   }
@@ -270,7 +303,11 @@ function ImageField({
       <span className="ws-label">{label}</span>
       {value && (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={value} alt="" className="mb-2 max-h-28 w-full rounded border border-edge object-contain" />
+        <img
+          src={value}
+          alt="Selected image preview"
+          className="mb-2 max-h-28 w-full rounded-lg border border-edge bg-[#0c0c0f] object-contain p-1"
+        />
       )}
       <div className="flex gap-1">
         <input
@@ -284,7 +321,7 @@ function ImageField({
         </button>
       </div>
       <input ref={input} type="file" accept="image/*" className="hidden" onChange={upload} />
-      {error && <p className="mt-1 text-xs text-red-400">{error}</p>}
+      {error && <p className="mt-1.5 text-[11px] leading-relaxed text-danger">{error}</p>}
     </div>
   );
 }
@@ -322,25 +359,38 @@ function Repeater({
 
       <div className="flex flex-col gap-1">
         {items.map((item, index) => (
-          <div key={index} className="rounded border border-edge bg-panelAlt">
+          <div key={index} className="overflow-hidden rounded-lg border border-edge bg-panelRaised transition-colors duration-150 hover:border-edgeStrong">
             <div className="flex items-center gap-1 px-2 py-1.5">
               <button
                 type="button"
-                className="flex-1 truncate text-left text-xs text-neutral-300 hover:text-white"
+                className="flex-1 truncate text-left text-[12px] text-neutral-300 transition-colors duration-150 hover:text-white"
                 onClick={() => setOpenIndex(openIndex === index ? null : index)}
               >
                 {String(item.title ?? item.heading ?? `Item ${index + 1}`) || `Item ${index + 1}`}
               </button>
-              <button type="button" className="px-1 text-xs text-neutral-500 hover:text-white" onClick={() => move(index, -1)} title="Move up">
+              <button
+                type="button"
+                className="flex h-6 w-5 items-center justify-center rounded text-faint transition-colors duration-150 hover:bg-panel hover:text-white"
+                onClick={() => move(index, -1)}
+                title="Move up"
+                aria-label="Move up"
+              >
                 ↑
               </button>
-              <button type="button" className="px-1 text-xs text-neutral-500 hover:text-white" onClick={() => move(index, 1)} title="Move down">
+              <button
+                type="button"
+                className="flex h-6 w-5 items-center justify-center rounded text-faint transition-colors duration-150 hover:bg-panel hover:text-white"
+                onClick={() => move(index, 1)}
+                title="Move down"
+                aria-label="Move down"
+              >
                 ↓
               </button>
               <button
                 type="button"
-                className="px-1 text-xs text-neutral-500 hover:text-red-400"
+                className="flex h-6 w-5 items-center justify-center rounded text-faint transition-colors duration-150 hover:bg-danger/10 hover:text-danger"
                 title="Remove"
+                aria-label="Remove"
                 onClick={() => onChange(items.filter((_, i) => i !== index))}
               >
                 ✕
@@ -366,13 +416,14 @@ function Repeater({
 
       <button
         type="button"
-        className="ws-btn mt-2 w-full text-xs"
+        className="ws-btn mt-2 w-full py-1.5 text-[12px]"
         onClick={() => {
           onChange([...items, { ...(control.itemDefaults ?? {}) }]);
           setOpenIndex(items.length);
         }}
       >
-        + Add item
+        <Icon name="plus" size={14} />
+        Add item
       </button>
     </div>
   );

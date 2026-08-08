@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 
+import Icon from '@/components/Icon';
+
 export interface PageSummary {
   id: string;
   title: string;
@@ -44,30 +46,37 @@ export default function PagesPanel({ pages, activeId, onSelect, onCreate, onDele
             <button
               type="button"
               onClick={() => onSelect(page.id)}
-              className={`flex-1 truncate rounded px-2 py-1.5 text-left text-xs ${
-                page.id === activeId ? 'bg-accent/25 text-white' : 'text-neutral-400 hover:bg-panelAlt hover:text-white'
+              className={`flex flex-1 items-center gap-2 truncate rounded-md px-2 py-2 text-left text-[12px] transition-colors duration-150 ${
+                page.id === activeId
+                  ? 'bg-accent/12 text-white'
+                  : 'text-muted hover:bg-panelRaised hover:text-neutral-200'
               }`}
             >
-              {page.title}
-              <span className="ml-1 text-neutral-600">{page.path}</span>
+              <Icon
+                name="pages"
+                size={14}
+                className={`shrink-0 ${page.id === activeId ? 'text-accent' : 'text-faint'}`}
+              />
+              <span className="truncate">{page.title}</span>
+              <span className="ml-auto shrink-0 font-mono text-[10px] text-faint">{page.path}</span>
             </button>
             {pages.length > 1 && (
               <button
                 type="button"
                 title={`Delete ${page.title}`}
-                className="px-1 text-xs text-neutral-600 hover:text-red-400"
+                className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-faint transition-colors duration-150 hover:bg-danger/10 hover:text-danger"
                 onClick={() => {
                   if (confirm(`Delete the page "${page.title}"?`)) void onDelete(page.id);
                 }}
               >
-                ✕
+                <Icon name="trash" size={13} />
               </button>
             )}
           </li>
         ))}
       </ul>
 
-      <div className="mt-4 border-t border-edge pt-3">
+      <div className="mt-5 border-t border-edge pt-4">
         <span className="ws-label">Add a page</span>
         <input
           className="ws-field mb-2"
@@ -81,10 +90,16 @@ export default function PagesPanel({ pages, activeId, onSelect, onCreate, onDele
           value={path}
           onChange={(event) => setPath(event.target.value)}
         />
-        <button type="button" className="ws-btn w-full text-xs" disabled={busy || !title.trim()} onClick={create}>
+        <button
+          type="button"
+          className="ws-btn w-full py-1.5 text-[12px]"
+          disabled={busy || !title.trim()}
+          onClick={create}
+        >
+          <Icon name="plus" size={14} />
           {busy ? 'Adding…' : 'Add page'}
         </button>
-        {error && <p className="mt-2 text-xs text-red-400">{error}</p>}
+        {error && <p className="mt-2 text-[11px] leading-relaxed text-danger">{error}</p>}
       </div>
     </div>
   );

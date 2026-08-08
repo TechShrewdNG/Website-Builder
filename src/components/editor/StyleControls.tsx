@@ -91,25 +91,39 @@ export default function StyleControls({ node, breakpoint, onChange }: Props) {
   return (
     <div>
       {breakpoint !== 'desktop' && (
-        <p className="mb-3 rounded border border-edge bg-panelAlt px-2 py-1.5 text-[11px] text-neutral-400">
-          Editing <strong className="text-neutral-200">{breakpoint}</strong>. Blank fields inherit the
-          desktop value shown in grey.
+        <p className="mb-3 rounded-lg border border-accent/25 bg-accent/[0.07] px-2.5 py-2 text-[11px] leading-relaxed text-neutral-300">
+          Editing <strong className="font-semibold text-accent">{breakpoint}</strong>. Blank fields
+          inherit the desktop value shown in grey.
         </p>
       )}
 
       {GROUPS.map((group) => (
-        <section key={group.title} className="mb-2 border-b border-edge pb-2">
+        <section key={group.title} className="mb-1 border-b border-edge/70 pb-1 last:border-b-0">
           <button
             type="button"
-            className="flex w-full items-center justify-between py-2 text-left text-xs font-semibold uppercase tracking-wide text-neutral-400 hover:text-white"
+            aria-expanded={Boolean(open[group.title])}
+            className="flex w-full items-center justify-between gap-2 py-2.5 text-left text-[12px] font-semibold text-neutral-200 transition-colors duration-150 hover:text-white"
             onClick={() => setOpen((prev) => ({ ...prev, [group.title]: !prev[group.title] }))}
           >
             {group.title}
-            <span aria-hidden="true">{open[group.title] ? '−' : '+'}</span>
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+              className={`shrink-0 text-faint transition-transform duration-200 ${open[group.title] ? 'rotate-180' : ''}`}
+            >
+              <path d="m6 9 6 6 6-6" />
+            </svg>
           </button>
 
           {open[group.title] && (
-            <div className="grid grid-cols-2 gap-2 pb-2">
+            <div className="grid grid-cols-2 gap-2 pb-3">
               {group.fields.map((field) =>
                 field.kind === 'box' ? (
                   <BoxField
@@ -171,7 +185,7 @@ function StyleField({
           <input
             type="color"
             aria-label={`${field.label} colour picker`}
-            className="h-[34px] w-9 shrink-0 cursor-pointer rounded border border-edge bg-panelAlt"
+            className="h-[36px] w-9 shrink-0 cursor-pointer rounded-md border border-edge bg-panelRaised p-1 transition-colors duration-150 hover:border-edgeStrong"
             value={toHex(value || inheritedValue)}
             onChange={(event) => onChange(event.target.value)}
           />
@@ -190,7 +204,7 @@ function StyleField({
     <label className="block">
       <span className="ws-label">{field.label}</span>
       <input
-        className="ws-field"
+        className="ws-field tabular-nums"
         value={value}
         placeholder={inheritedValue || field.placeholder || ''}
         onChange={(event) => onChange(event.target.value)}
@@ -220,7 +234,7 @@ function BoxField({
           return (
             <input
               key={side}
-              className="ws-field text-center"
+              className="ws-field px-1 text-center tabular-nums"
               aria-label={`${field.label} ${side}`}
               title={side}
               value={values[prop] ?? ''}

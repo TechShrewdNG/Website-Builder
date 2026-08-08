@@ -4,6 +4,7 @@ import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { importHtml, type ImportResult } from '@/lib/builder/importer';
+import Icon from '@/components/Icon';
 
 /**
  * Project creation, including import.
@@ -57,49 +58,66 @@ export default function NewProjectPanel() {
   }
 
   return (
-    <section className="mt-8 rounded border border-edge bg-panel p-5">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-neutral-400">New site</h2>
+    <section className="ws-card overflow-hidden">
+      <div className="border-b border-edge px-5 py-3.5">
+        <h2 className="text-[13px] font-semibold text-white">Start a new site</h2>
+        <p className="mt-0.5 text-[12px] text-faint">
+          Build from an empty page, or bring in HTML you already have.
+        </p>
+      </div>
 
-      <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
-        <div className="flex-1">
-          <label className="ws-label" htmlFor="project-name">
-            Site name
-          </label>
-          <input
-            id="project-name"
-            className="ws-field"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            placeholder="Acme marketing site"
-          />
+      <div className="p-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+          <div className="min-w-0 flex-1">
+            <label className="ws-label" htmlFor="project-name">
+              Site name
+            </label>
+            <input
+              id="project-name"
+              className="ws-field"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              placeholder="Ridgeline Coffee"
+            />
+          </div>
+
+          <div className="flex shrink-0 gap-2">
+            <button
+              type="button"
+              className="ws-btn-primary h-[38px]"
+              disabled={busy || !name.trim()}
+              onClick={() =>
+                create(
+                  pending
+                    ? {
+                        name: name.trim(),
+                        imported: {
+                          tree: pending.result.root,
+                          title: pending.result.title,
+                          css: pending.result.css,
+                          externalStylesheets: pending.result.externalStylesheets,
+                        },
+                      }
+                    : { name: name.trim() },
+                )
+              }
+            >
+              <Icon name="plus" size={15} />
+              {busy ? 'Creating…' : pending ? 'Create from import' : 'Create blank site'}
+            </button>
+
+            <button
+              type="button"
+              className="ws-btn h-[38px]"
+              disabled={busy}
+              onClick={() => fileInput.current?.click()}
+            >
+              <Icon name="upload" size={15} />
+              Import HTML…
+            </button>
+          </div>
         </div>
 
-        <button
-          type="button"
-          className="ws-btn-primary"
-          disabled={busy || !name.trim()}
-          onClick={() =>
-            create(
-              pending
-                ? {
-                    name: name.trim(),
-                    imported: {
-                      tree: pending.result.root,
-                      title: pending.result.title,
-                      css: pending.result.css,
-                      externalStylesheets: pending.result.externalStylesheets,
-                    },
-                  }
-                : { name: name.trim() },
-            )
-          }
-        >
-          {busy ? 'Creating…' : pending ? 'Create from import' : 'Create blank site'}
-        </button>
-
-        <button type="button" className="ws-btn" disabled={busy} onClick={() => fileInput.current?.click()}>
-          Import HTML…
-        </button>
         <input
           ref={fileInput}
           type="file"
@@ -107,35 +125,51 @@ export default function NewProjectPanel() {
           className="hidden"
           onChange={handleFile}
         />
-      </div>
 
-      {pending && (
-        <div className="mt-4 rounded border border-edge bg-panelAlt p-3 text-sm">
-          <div className="flex items-center justify-between gap-3">
-            <span>
-              Parsed <strong>{pending.filename}</strong> — {countNodes(pending.result)} elements
-              {pending.result.css ? ', stylesheet preserved' : ''}
-            </span>
-            <button type="button" className="text-xs text-neutral-400 hover:text-white" onClick={() => setPending(null)}>
-              Discard
-            </button>
+        {pending && (
+          <div className="mt-4 animate-ws-rise rounded-lg border border-accent/25 bg-accent/[0.06] p-3.5">
+            <div className="flex items-start justify-between gap-3">
+              <span className="flex min-w-0 items-start gap-2.5 text-[13px] text-neutral-200">
+                <Icon name="check" size={16} className="mt-0.5 shrink-0 text-accent" />
+                <span>
+                  Parsed <strong className="font-semibold text-white">{pending.filename}</strong> —{' '}
+                  <span className="tabular-nums">{countNodes(pending.result)}</span> elements
+                  {pending.result.css ? ', stylesheet preserved' : ''}
+                </span>
+              </span>
+              <button
+                type="button"
+                className="shrink-0 text-[12px] text-muted transition-colors duration-150 hover:text-white"
+                onClick={() => setPending(null)}
+              >
+                Discard
+              </button>
+            </div>
+
+            {pending.result.warnings.length > 0 && (
+              <ul className="mt-3 flex flex-col gap-1.5 border-t border-accent/15 pt-3">
+                {pending.result.warnings.map((warning) => (
+                  <li key={warning} className="flex gap-2 text-[11.5px] leading-relaxed text-muted">
+                    <span aria-hidden="true" className="text-accent">
+                      –
+                    </span>
+                    {warning}
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
+        )}
 
-          {pending.result.warnings.length > 0 && (
-            <ul className="mt-3 list-disc space-y-1 pl-5 text-xs text-amber-300/90">
-              {pending.result.warnings.map((warning) => (
-                <li key={warning}>{warning}</li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
-
-      {error && (
-        <p role="alert" className="mt-3 text-sm text-red-400">
-          {error}
-        </p>
-      )}
+        {error && (
+          <p
+            role="alert"
+            className="mt-4 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2.5 text-[13px] text-danger"
+          >
+            {error}
+          </p>
+        )}
+      </div>
     </section>
   );
 }

@@ -59,8 +59,8 @@ export default function ProjectSettings({ project, page, onProjectChange, onPage
             if (name && name !== project.name) void saveProject({ name });
           }}
         />
-        <p className="mt-1 text-[11px] text-neutral-500">
-          Published at <code>/s/{project.slug}</code>
+        <p className="mt-1.5 text-[11px] leading-relaxed text-faint">
+          Published at <code className="text-muted">/s/{project.slug}</code>
         </p>
       </section>
 
@@ -84,7 +84,7 @@ export default function ProjectSettings({ project, page, onProjectChange, onPage
             if (path && path !== page.path) void savePage({ path });
           }}
         />
-        <p className="mt-1 text-[11px] text-neutral-500">
+        <p className="mt-1.5 text-[11px] leading-relaxed text-faint">
           Lowercase letters, numbers and dashes, starting with /
         </p>
       </section>
@@ -92,12 +92,12 @@ export default function ProjectSettings({ project, page, onProjectChange, onPage
       <section className="mb-5 border-t border-edge pt-4">
         <span className="ws-label">Project CSS</span>
         <textarea
-          className="ws-field min-h-40 font-mono text-[11px]"
+          className="ws-field min-h-40 font-mono text-[11px] leading-relaxed"
           defaultValue={project.customCss ?? ''}
           placeholder={'.my-class {\n  color: red;\n}'}
           onBlur={(event) => void saveProject({ customCss: event.target.value })}
         />
-        <p className="mt-1 text-[11px] text-neutral-500">
+        <p className="mt-1.5 text-[11px] leading-relaxed text-faint">
           Applied after generated styles, on every page. Saved when you click away.
         </p>
       </section>
@@ -106,17 +106,17 @@ export default function ProjectSettings({ project, page, onProjectChange, onPage
         <section className="border-t border-edge pt-4">
           <span className="ws-label">Imported stylesheet</span>
           <textarea
-            className="ws-field min-h-32 font-mono text-[11px]"
+            className="ws-field min-h-32 font-mono text-[11px] leading-relaxed"
             defaultValue={project.importedCss}
             onBlur={(event) => void saveProject({ importedCss: event.target.value })}
           />
-          <p className="mt-1 text-[11px] text-neutral-500">
+          <p className="mt-1.5 text-[11px] leading-relaxed text-faint">
             Came from the imported template. Generated styles override it, so edits here stay safe.
           </p>
         </section>
       )}
 
-      {status && <p className="mt-4 text-xs text-neutral-400">{status}</p>}
+      {status && <p className="mt-4 text-[11px] text-muted">{status}</p>}
     </div>
   );
 }

@@ -38,20 +38,22 @@ const FRAME_WIDTH: Record<Breakpoint, string> = {
 
 /** Chrome shown only inside the editor; never part of an export. */
 const EDITOR_CSS = `
-[data-ws]:not([data-ws="${ROOT_ID}"]):hover { outline: 1px dashed rgba(99,102,241,.7); outline-offset: -1px; }
-[data-ws-selected="true"] { outline: 2px solid #6366f1 !important; outline-offset: -2px; }
-[data-ws-editing="true"] { outline: 2px solid #22c55e !important; cursor: text; }
+[data-ws]:not([data-ws="${ROOT_ID}"]):hover { outline: 1px dashed rgba(184,124,32,.55); outline-offset: -1px; }
+[data-ws-selected="true"] { outline: 2px solid #b87c20 !important; outline-offset: -2px; }
+[data-ws-editing="true"] { outline: 2px solid #3f8f5a !important; cursor: text; }
 .ws-empty-hint {
   display: flex; align-items: center; justify-content: center;
-  min-height: 72px; margin: 4px; padding: 12px;
-  border: 1px dashed #b3b5c6; border-radius: 6px;
-  color: #8b8d9e; font: 500 13px system-ui, sans-serif;
+  min-height: 76px; margin: 4px; padding: 12px;
+  border: 1px dashed #c8c3b8; border-radius: 8px;
+  color: #8d887e; font: 500 13px ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: -0.01em;
 }
-[data-ws-drop="inside"] { box-shadow: inset 0 0 0 2px #22c55e; }
-[data-ws-drop="before"] { box-shadow: 0 -3px 0 0 #22c55e; }
-[data-ws-drop="after"] { box-shadow: 0 3px 0 0 #22c55e; }
-[data-ws-drop="before-x"] { box-shadow: -3px 0 0 0 #22c55e; }
-[data-ws-drop="after-x"] { box-shadow: 3px 0 0 0 #22c55e; }
+/* Drop feedback is green so it never reads as "this is selected". */
+[data-ws-drop="inside"] { box-shadow: inset 0 0 0 2px #3f8f5a; }
+[data-ws-drop="before"] { box-shadow: 0 -3px 0 0 #3f8f5a; }
+[data-ws-drop="after"] { box-shadow: 0 3px 0 0 #3f8f5a; }
+[data-ws-drop="before-x"] { box-shadow: -3px 0 0 0 #3f8f5a; }
+[data-ws-drop="after-x"] { box-shadow: 3px 0 0 0 #3f8f5a; }
 body { min-height: 100vh; }
 `;
 
@@ -287,11 +289,11 @@ export default function Canvas({
   onRedoRef.current = onRedo;
 
   return (
-    <div className="flex h-full justify-center overflow-auto bg-[#2a2b33] p-4">
+    <div className="flex h-full justify-center overflow-auto bg-[#0b0b0e] p-5">
       <iframe
         ref={frameRef}
         title="Page canvas"
-        className="h-full rounded bg-white shadow-2xl transition-[width] duration-200"
+        className="h-full rounded-lg bg-white shadow-[var(--ws-shadow-lg)] ring-1 ring-black/40 transition-[width] duration-300 ease-out"
         style={{ width: FRAME_WIDTH[breakpoint], maxWidth: '100%' }}
         onDragOver={(event) => event.preventDefault()}
       />
