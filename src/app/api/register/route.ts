@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 
 import { prisma } from '@/lib/db';
+import { toResponse } from '@/lib/http';
 
 const schema = z.object({
   name: z.string().trim().min(1).max(80).optional(),
@@ -17,18 +18,26 @@ export async function POST(request: Request) {
   }
 
   const email = parsed.data.email.toLowerCase();
-  const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
-  if (existing) {
-    return NextResponse.json({ error: 'An account with that email already exists' }, { status: 409 });
+
+  // Without this, any database problem — an unpushed schema, an unreachable
+  // host — escapes as a bare 500 with an empty body, and the sign-up form can
+  // only say "could not create the account".
+  try {
+    const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+    if (existing) {
+      return NextResponse.json({ error: 'An account with that email already exists' }, { status: 409 });
+    }
+
+    await prisma.user.create({
+      data: {
+        email,
+        name: parsed.data.name ?? null,
+        passwordHash: await bcrypt.hash(parsed.data.password, 12),
+      },
+    });
+
+    return NextResponse.json({ ok: true }, { status: 201 });
+  } catch (error) {
+    return toResponse(error);
   }
-
-  await prisma.user.create({
-    data: {
-      email,
-      name: parsed.data.name ?? null,
-      passwordHash: await bcrypt.hash(parsed.data.password, 12),
-    },
-  });
-
-  return NextResponse.json({ ok: true }, { status: 201 });
 }

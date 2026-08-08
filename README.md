@@ -55,6 +55,26 @@ is the only way to patch those without jumping to Next 16. `sharp` is unused at
 runtime anyway, since `images.unoptimized` is set — generated sites are static
 HTML and don't go through the image pipeline.
 
+## Troubleshooting a deployment
+
+If sign-up or sign-in fails, hit `/api/health` first. It reports which of the
+three things a fresh deploy usually gets wrong is actually wrong:
+
+```json
+{ "ok": false, "checks": {
+    "authSecret": "MISSING — sign-in will fail",
+    "databaseUrl": "set",
+    "database": "The database is reachable but its schema is missing. Run `npm run db:push`..." } }
+```
+
+The most common cause of "I can't create an account" is the schema never having
+been pushed — the build succeeds without touching the database, so nothing fails
+until the first query. Run `npm run db:push` against the production
+`DATABASE_URL` once.
+
+API routes return these as real messages with a 503, so the cause also shows up
+in the sign-up form itself rather than as a generic failure.
+
 ## How it works
 
 ### The document model
