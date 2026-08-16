@@ -32,10 +32,9 @@ export default async function DashboardPage() {
     <div className="ws-grain min-h-dvh">
       <header className="border-b border-edge bg-panel/60">
         <div className="mx-auto flex max-w-5xl items-center gap-4 px-6 py-4">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-accentInk">
-            <Icon name="grid" size={17} />
+          <span className="text-[15px] font-extrabold tracking-tight">
+            QLEVR<span className="text-accent">.</span> Canvas
           </span>
-          <span className="text-[14px] font-semibold tracking-ui">Website Builder</span>
 
           <div className="ml-auto flex items-center gap-3">
             <span className="hidden text-[12px] text-faint sm:inline">{session.user.email}</span>

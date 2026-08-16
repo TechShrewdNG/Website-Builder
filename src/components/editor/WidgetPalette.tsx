@@ -47,7 +47,7 @@ export default function WidgetPalette({ onAdd }: Props) {
                   className={`group flex cursor-grab items-center gap-2 rounded-lg border border-transparent
                     bg-panelRaised px-2.5 py-2.5 text-left text-[12px] text-neutral-300
                     transition-[background-color,border-color,color,transform] duration-150
-                    hover:border-accent/35 hover:bg-[#24242b] hover:text-white
+                    hover:border-accent/35 hover:bg-[#2d1444] hover:text-white
                     active:translate-y-px active:cursor-grabbing
                     ${
                       // An odd count would otherwise leave a gap in the row.

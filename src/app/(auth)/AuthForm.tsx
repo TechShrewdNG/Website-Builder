@@ -52,7 +52,7 @@ export default function AuthForm({ mode }: { mode: 'login' | 'register' }) {
 
       <div className="relative z-10 mx-auto w-full max-w-[380px]">
         <Link href="/" className="mkt-logo mb-9 inline-block text-[1.15rem]">
-          Website Builder<span>.</span>
+          QLEVR<span>.</span> Canvas
         </Link>
 
         <h1 className="font-display text-[32px] font-light leading-tight text-mktText">

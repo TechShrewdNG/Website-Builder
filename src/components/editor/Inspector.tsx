@@ -94,7 +94,7 @@ export default function Inspector({
 
         {/* Sliding indicator rather than two filled pills, so the inactive tab
             stays legible instead of reading as disabled. */}
-        <div className="relative mt-2.5 flex rounded-lg bg-[#121216] p-0.5">
+        <div className="relative mt-2.5 flex rounded-lg bg-[#150729] p-0.5">
           <span
             aria-hidden="true"
             className="absolute inset-y-0.5 w-[calc(50%-2px)] rounded-md bg-panelRaised shadow-[var(--ws-shadow-sm)] transition-transform duration-200 ease-out"
@@ -504,7 +504,7 @@ function ImageField({
         <img
           src={value}
           alt="Selected image preview"
-          className="mb-2 max-h-28 w-full rounded-lg border border-edge bg-[#0c0c0f] object-contain p-1"
+          className="mb-2 max-h-28 w-full rounded-lg border border-edge bg-[#0a0114] object-contain p-1"
         />
       )}
       <div className="flex gap-1">

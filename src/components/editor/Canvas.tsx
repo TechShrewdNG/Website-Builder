@@ -371,7 +371,7 @@ export default function Canvas({
   onClipboardRef.current = onClipboard;
 
   return (
-    <div className="flex h-full justify-center overflow-auto bg-[#0b0b0e] p-5">
+    <div className="flex h-full justify-center overflow-auto bg-[#0a0114] p-5">
       <iframe
         ref={frameRef}
         title="Page canvas"

@@ -258,9 +258,9 @@ Asset paths are made relative to each page's depth, so it works on any host.
 
 The chrome is styled from one set of tokens in `src/app/globals.css`, exposed to
 Tailwind as RGB channel triplets so opacity modifiers (`bg-accent/15`) work
-against them. Warm near-black surfaces, a single amber accent, and Geist for
-both text and numerals — the style panel uses tabular figures so values line up
-column to column.
+against them. Deep purple near-black surfaces, a single gold accent (matching
+the QLEVR reference site), and Geist for both text and numerals — the style
+panel uses tabular figures so values line up column to column.
 
 Icons are a hand-drawn set in `src/components/Icon.tsx`, one 1.6 stroke weight
 on a 24-unit grid. They replaced a mix of unicode symbols and colour emoji that
@@ -276,22 +276,23 @@ design changes.
 
 ### The marketing theme
 
-The landing page and auth pages (`/`, `/login`, `/register`) carry a second,
-separate design system — deep purple/near-black, a single gold accent, and a
-three-font pairing (Syne for labels, Cormorant Garamond italic for display
+The landing page and auth pages (`/`, `/login`, `/register`) carry the same
+deep purple/gold palette as the dashboard and editor, plus a three-font
+pairing on top of it (Syne for labels, Cormorant Garamond italic for display
 headlines, Jost for body) via `next/font/google` in `layout.tsx`. It is
 namespaced under a `.mkt-theme` wrapper class with its own `--mkt-*` custom
 properties in `globals.css` and a parallel `mkt*` colour/font set in
-`tailwind.config.ts`, entirely separate from the `--ws-*` tokens the dashboard
-and editor use.
+`tailwind.config.ts` — the actual RGB values are kept in sync with the
+`--ws-*` tokens the dashboard and editor use, so the palette reads as one
+system; only the typefaces differ.
 
 The split is deliberate, not incidental: the dashboard and editor are a dense
 working tool where tabular alignment and quick scanning matter more than
-editorial flair, so they keep the single-sans "Studio dark" system. The
-landing and auth pages exist to sell the product, which is a different job —
-they use the heavier, three-font treatment. Applying one system everywhere
-would either make the tool cluttered with serif italics or make the sales
-pages read as just another SaaS dashboard.
+editorial flair, so they keep Geist rather than the three-font treatment. The
+landing and auth pages exist to sell the product, which is a different job,
+so they use the heavier, serif-and-display pairing on the same colours.
+Applying the marketing fonts everywhere would clutter the tool with serif
+italics it doesn't need.
 
 The feature section on the landing page embeds real screenshots of the editor
 (`public/marketing/*.png`) rather than illustrations or icons — evidence that

@@ -5,9 +5,9 @@
 /**
  * Design tokens for the builder's own chrome.
  *
- * Deliberately warm rather than neutral: the greys carry a slight amber tint
- * so panels sit next to the accent without the blue cast that `slate` greys
- * give a dark UI. One accent only.
+ * Deep purple/near-black with a single gold accent, adopted from the QLEVR
+ * reference site so the Studio and the marketing pages read as one system
+ * rather than two different products.
  *
  * None of this reaches a generated site — those are styled entirely by the CSS
  * the builder emits, which never assumes Tailwind or these variables exist.
@@ -17,27 +17,27 @@
 
   /* Stored as space-separated RGB channels, not hex, so Tailwind's opacity
      modifiers (bg-accent/15, border-danger/30) resolve against them. */
-  --ws-bg: 16 16 20;
-  --ws-panel: 23 23 28;
-  --ws-panel-raised: 29 29 35;
-  --ws-edge: 38 38 46;
-  --ws-edge-strong: 53 53 63;
+  --ws-bg: 10 1 20;
+  --ws-panel: 17 2 34;
+  --ws-panel-raised: 24 4 44;
+  --ws-edge: 45 20 68;
+  --ws-edge-strong: 64 30 92;
 
-  --ws-text: 236 235 232;
-  --ws-text-muted: 157 155 150;
-  --ws-text-faint: 107 106 103;
+  --ws-text: 245 240 255;
+  --ws-text-muted: 150 140 172;
+  --ws-text-faint: 100 92 122;
 
-  --ws-accent: 215 155 60;
-  --ws-accent-hover: 229 170 74;
-  --ws-accent-ink: 26 18 6;
+  --ws-accent: 201 168 76;
+  --ws-accent-hover: 232 204 122;
+  --ws-accent-ink: 10 1 20;
 
-  --ws-danger: 212 104 92;
+  --ws-danger: 224 110 96;
   --ws-positive: 127 174 107;
 
   /* Shadows carry the background's hue instead of neutral black. */
-  --ws-shadow-sm: 0 1px 2px rgba(8, 6, 3, 0.4);
-  --ws-shadow-md: 0 4px 16px -4px rgba(8, 6, 3, 0.55);
-  --ws-shadow-lg: 0 24px 60px -20px rgba(8, 6, 3, 0.75);
+  --ws-shadow-sm: 0 1px 2px rgba(5, 0, 10, 0.4);
+  --ws-shadow-md: 0 4px 16px -4px rgba(5, 0, 10, 0.55);
+  --ws-shadow-lg: 0 24px 60px -20px rgba(5, 0, 10, 0.75);
 }
 
 body {
@@ -225,7 +225,7 @@ body {
   border-radius: 999px;
 }
 .thin-scroll::-webkit-scrollbar-thumb:hover {
-  background: #45454f;
+  background: #532a76;
   background-clip: content-box;
 }
 .thin-scroll::-webkit-scrollbar-track {
@@ -247,7 +247,7 @@ body {
 
 @layer components {
   .ws-field {
-    @apply w-full rounded-md border border-edge bg-[#121216] px-2.5 py-2 text-sm text-white
+    @apply w-full rounded-md border border-edge bg-[#150729] px-2.5 py-2 text-sm text-white
       placeholder:text-faint transition-colors duration-150
       hover:border-edgeStrong focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25;
   }
@@ -265,7 +265,7 @@ body {
 
   .ws-btn {
     @apply ws-btn-base border border-edge bg-panelRaised text-neutral-300
-      hover:border-edgeStrong hover:bg-[#24242b] hover:text-white;
+      hover:border-edgeStrong hover:bg-[#2d1444] hover:text-white;
   }
 
   .ws-btn-primary {

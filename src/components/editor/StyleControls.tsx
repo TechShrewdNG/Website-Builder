@@ -103,7 +103,7 @@ export default function StyleControls({ node, breakpoint, onChange, onStateChang
 
   return (
     <div>
-      <div className="mb-3 flex rounded-lg bg-[#121216] p-0.5">
+      <div className="mb-3 flex rounded-lg bg-[#150729] p-0.5">
         {(['normal', ...STATES] as const).map((value) => (
           <button
             key={value}

@@ -268,7 +268,7 @@ function FaviconField({
     <div>
       <span className="ws-label">Favicon</span>
       <div className="flex items-center gap-2">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md border border-edge bg-[#0d0d10]">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md border border-edge bg-[#0a0114]">
           {project.faviconData ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={project.faviconData} alt="Current favicon" className="h-5 w-5 object-contain" />
@@ -347,7 +347,7 @@ function MediaLibrary({ projectId }: { projectId: string }) {
             {assets.map((asset) => (
               <div
                 key={asset.id}
-                className="group relative aspect-square overflow-hidden rounded-md border border-edge bg-[#0d0d10]"
+                className="group relative aspect-square overflow-hidden rounded-md border border-edge bg-[#0a0114]"
                 title={asset.filename}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}

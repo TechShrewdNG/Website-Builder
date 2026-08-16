@@ -40,7 +40,7 @@ export default function ProjectRow({ project }: Props) {
         href={`/editor/${project.id}`}
         aria-hidden="true"
         tabIndex={-1}
-        className="hidden h-14 w-20 shrink-0 flex-col gap-1 overflow-hidden rounded-lg border border-edge bg-[#0d0d10] p-2 sm:flex"
+        className="hidden h-14 w-20 shrink-0 flex-col gap-1 overflow-hidden rounded-lg border border-edge bg-[#0a0114] p-2 sm:flex"
       >
         <span className="h-1.5 w-3/4 rounded-full bg-edgeStrong" />
         <span className="h-1 w-full rounded-full bg-edge" />

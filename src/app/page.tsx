@@ -128,7 +128,7 @@ function Nav({ session }: { session: Session | null }) {
         style={{ paddingInline: 'var(--mkt-gutter)', paddingBlock: '1.1rem' }}
       >
         <Link href="/" className="mkt-logo text-[1.3rem]">
-          Website Builder<span>.</span>
+          QLEVR<span>.</span> Canvas
         </Link>
 
         <nav className="ml-auto flex items-center gap-2">
@@ -369,7 +369,7 @@ function Footer() {
         style={{ paddingInline: 'var(--mkt-gutter)', paddingBlock: '1.75rem' }}
       >
         <span className="mkt-logo text-[13px]">
-          Website Builder<span>.</span>
+          QLEVR<span>.</span> Canvas
         </span>
         <span aria-hidden="true">·</span>
         <span>

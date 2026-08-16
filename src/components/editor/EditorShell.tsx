@@ -587,7 +587,7 @@ export default function EditorShell({ project: initialProject, pages: initialPag
                 className={`flex h-7 w-8 items-center justify-center rounded-md transition-colors duration-150 ${
                   breakpoint === value
                     ? 'bg-accent text-accentInk'
-                    : 'text-muted hover:bg-[#24242b] hover:text-white'
+                    : 'text-muted hover:bg-[#2d1444] hover:text-white'
                 }`}
               >
                 <Icon name={value} size={16} />
