@@ -4,6 +4,7 @@ import type { Session } from 'next-auth';
 
 import { auth } from '@/lib/auth';
 import Icon, { type IconName } from '@/components/Icon';
+import Reveal from '@/components/Reveal';
 
 const CAPABILITIES = ['Import any HTML', 'Drag-and-drop editing', 'Export clean code', 'Publish in one click'];
 
@@ -241,7 +242,7 @@ function FeatureList() {
                 key={feature.eyebrow}
                 className={`grid items-center gap-10 md:grid-cols-2 md:gap-16 ${reversed ? 'md:[&>*:first-child]:order-2' : ''}`}
               >
-                <div>
+                <Reveal>
                   <p className="mkt-eyebrow mb-4">{feature.eyebrow}</p>
                   <h2 className="font-display text-balance text-[clamp(1.9rem,3.4vw,2.7rem)] font-light leading-[1.15] text-mktText">
                     {feature.heading}
@@ -249,9 +250,10 @@ function FeatureList() {
                   <p className="mt-5 max-w-md text-pretty text-[14.5px] leading-relaxed text-mktTextMuted">
                     {feature.body}
                   </p>
-                </div>
+                </Reveal>
 
-                <div
+                <Reveal
+                  delayMs={150}
                   className="group relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-2xl border border-mktBorder/20 bg-mktBgSection p-5"
                   style={{ boxShadow: '0 2px 40px rgba(107,33,200,0.1)' }}
                 >
@@ -272,7 +274,7 @@ function FeatureList() {
                   >
                     <Icon name={feature.icon} size={16} />
                   </span>
-                </div>
+                </Reveal>
               </article>
             );
           })}
