@@ -4,7 +4,8 @@ import { JSDOM } from 'jsdom';
 
 import { importHtml } from '../src/lib/builder/importer';
 import { renderNode } from '../src/lib/builder/render';
-import { flatten, findNode } from '../src/lib/builder/tree';
+import { createRoot, flatten, findNode } from '../src/lib/builder/tree';
+import { createNode } from '../src/lib/builder/widgets';
 
 // The importer is browser-only by design; jsdom supplies DOMParser for tests.
 // It only reads DOMParser when called, so installing it here is early enough.
@@ -86,16 +87,32 @@ test('maps elements onto editable widgets', () => {
   assert.deepEqual(cta?.classes, ['btn', 'btn-primary']);
 });
 
-test('keeps tables and lists as raw HTML instead of approximating them', () => {
-  const { root } = importHtml(TEMPLATE);
-  const raw = flatten(root).filter((node) => node.type === 'html');
+test('simple lists and tables are modelled, keeping their content editable', () => {
+  const nodes = flatten(importHtml(TEMPLATE).root);
 
-  const table = raw.find((node) => String(node.props.html).startsWith('<table'));
-  const list = raw.find((node) => String(node.props.html).startsWith('<ul'));
+  // These used to be kept as opaque HTML. They are the things people most
+  // want to edit, so they are modelled now — see the round-trip tests below.
+  const table = nodes.find((node) => node.type === 'table');
+  const list = nodes.find((node) => node.type === 'list');
 
-  assert.ok(table, 'table preserved verbatim');
-  assert.ok(list, 'list preserved verbatim');
-  assert.match(String(table!.props.html), /\$29/);
+  assert.ok(table, 'the pricing table is editable');
+  assert.deepEqual(table.props.rows, [['Pro', '$29']]);
+  assert.ok(list, 'the feature list is editable');
+  assert.deepEqual(list.props.items, [
+    { text: 'One', href: '' },
+    { text: 'Two', href: '' },
+  ]);
+});
+
+test('markup a widget cannot reproduce is still preserved verbatim', () => {
+  const { root } = importHtml(
+    '<body><form action="/subscribe"><input name="email"><svg viewBox="0 0 1 1"></svg></form></body>',
+  );
+
+  const raw = flatten(root).find((node) => node.type === 'html');
+  assert.ok(raw, 'the form is kept exactly');
+  assert.match(String(raw.props.html), /action="\/subscribe"/);
+  assert.match(String(raw.props.html), /<svg/);
 });
 
 test('round-trips: rendered output keeps the original classes and text', () => {
@@ -122,4 +139,91 @@ test('drops nothing when the same tree is imported twice', () => {
 test('root id stays addressable after import', () => {
   const { root } = importHtml(TEMPLATE);
   assert.ok(findNode(root, 'root'));
+});
+
+// ---------------------------------------------------------------------------
+// Lists and tables: modelled, not preserved as opaque blocks
+// ---------------------------------------------------------------------------
+
+test('a nav menu becomes an editable list of links', () => {
+  const { root } = importHtml(`<body>
+    <nav class="nav"><ul>
+      <li><a href="/">Home</a></li>
+      <li><a href="/pricing">Pricing</a></li>
+    </ul></nav>
+  </body>`);
+
+  const list = flatten(root).find((node) => node.type === 'list');
+  assert.ok(list, 'the <ul> is modelled rather than kept as raw HTML');
+  assert.equal(list.props.ordered, false);
+  assert.deepEqual(list.props.items, [
+    { text: 'Home', href: '/' },
+    { text: 'Pricing', href: '/pricing' },
+  ]);
+
+  // Round-trip: the original markup shape and classes survive.
+  const html = renderNode(root);
+  assert.match(html, /<ul[^>]*><li><a href="\/">Home<\/a><\/li>/);
+});
+
+test('an ordered list keeps its numbering', () => {
+  const { root } = importHtml('<body><ol><li>One</li><li>Two</li></ol></body>');
+  const list = flatten(root).find((node) => node.type === 'list');
+  assert.equal(list?.props.ordered, true);
+  assert.match(renderNode(root), /<ol[^>]*>/);
+});
+
+test('a list of rich content keeps its markup instead of losing it', () => {
+  const { root, warnings } = importHtml(
+    '<body><ul><li><h3>Card</h3><p>Body copy</p></li></ul></body>',
+  );
+
+  // Flattening this to strings would silently drop the heading and paragraph.
+  const raw = flatten(root).find((node) => node.type === 'html');
+  assert.ok(raw, 'kept verbatim');
+  assert.match(String(raw.props.html), /<h3>Card<\/h3>/);
+  assert.ok(warnings.some((warning) => warning.includes('ul')));
+});
+
+test('a simple table becomes editable rows and columns', () => {
+  const { root } = importHtml(`<body><table class="pricing">
+    <tr><th>Plan</th><th>Price</th></tr>
+    <tr><td>Standard</td><td>29</td></tr>
+  </table></body>`);
+
+  const table = flatten(root).find((node) => node.type === 'table');
+  assert.ok(table);
+  assert.equal(table.props.headerRow, true);
+  assert.deepEqual(table.props.rows, [
+    ['Plan', 'Price'],
+    ['Standard', '29'],
+  ]);
+  assert.deepEqual(table.classes, ['pricing']);
+
+  const html = renderNode(root);
+  assert.match(html, /<thead><tr><th>Plan<\/th><th>Price<\/th><\/tr><\/thead>/);
+  assert.match(html, /<tbody><tr><td>Standard<\/td><td>29<\/td><\/tr><\/tbody>/);
+});
+
+test('a table with merged cells is preserved rather than mangled', () => {
+  const { root, warnings } = importHtml(
+    '<body><table><tr><td colspan="2">Wide</td></tr><tr><td>a</td><td>b</td></tr></table></body>',
+  );
+
+  // A rectangular array cannot express a colspan, and silently dropping it
+  // would change the layout.
+  assert.ok(!flatten(root).some((node) => node.type === 'table'));
+  const raw = flatten(root).find((node) => node.type === 'html');
+  assert.match(String(raw?.props.html), /colspan="2"/);
+  assert.ok(warnings.some((warning) => warning.includes('merged cells')));
+});
+
+test('ragged table rows still render valid markup', () => {
+  const node = createNode('table');
+  node.props = { headerRow: false, rows: [['a', 'b', 'c'], ['d']] };
+
+  const html = renderNode(createRoot([node]));
+  // Every row is padded to the widest, so the table is never malformed.
+  const cells = html.split('<td>').length - 1;
+  assert.equal(cells, 6);
 });

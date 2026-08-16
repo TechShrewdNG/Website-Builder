@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import EditorShell from '@/components/editor/EditorShell';
 import type { BuilderNode } from '@/lib/builder/types';
+import { readTheme } from '@/lib/builder/theme';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,7 +19,7 @@ export default async function EditorPage({ params }: { params: Promise<{ project
   });
   if (!project) notFound();
 
-  const theme = (project.theme ?? {}) as { externalStylesheets?: string[] };
+  const theme = readTheme(project.theme);
 
   return (
     <EditorShell
@@ -30,6 +31,7 @@ export default async function EditorPage({ params }: { params: Promise<{ project
         importedCss: project.importedCss,
         customCss: project.customCss,
         externalStylesheets: theme.externalStylesheets ?? [],
+        theme,
         siteUrl: project.siteUrl,
         faviconData: project.faviconData,
         headerTree: project.headerTree as unknown as BuilderNode | null,

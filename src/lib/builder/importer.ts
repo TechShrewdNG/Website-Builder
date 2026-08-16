@@ -29,10 +29,17 @@ export interface ImportResult {
   warnings: string[];
 }
 
-/** Elements kept verbatim: modelling them would change how they render. */
+/**
+ * Elements kept verbatim: modelling them would change how they render.
+ *
+ * Lists and tables used to live here. They are the most common things people
+ * actually want to edit — navigation menus, feature lists, pricing tables —
+ * so they are now modelled, with the round-trip covered by tests. What stays
+ * here is markup with behaviour or geometry a widget cannot reproduce.
+ */
 const VERBATIM = new Set([
-  'table', 'form', 'svg', 'video', 'audio', 'iframe', 'canvas', 'select',
-  'textarea', 'input', 'button', 'ul', 'ol', 'dl', 'pre', 'blockquote',
+  'form', 'svg', 'video', 'audio', 'iframe', 'canvas', 'select',
+  'textarea', 'input', 'button', 'dl', 'pre', 'blockquote',
   'figure', 'picture', 'object', 'embed', 'map', 'details',
 ]);
 
@@ -133,6 +140,22 @@ function convertElement(el: Element, warnings: string[]): BuilderNode | null {
 
   if (tag === 'hr') return makeNode('divider', el, {});
 
+  if (tag === 'ul' || tag === 'ol') {
+    const list = convertList(el, tag === 'ol');
+    // Only model it when every row is a simple text or link item; a list of
+    // cards would lose its contents.
+    if (list) return list;
+    warnings.push(`A <${tag}> with structured content was kept as raw HTML.`);
+    return makeNode('html', el, { html: el.outerHTML });
+  }
+
+  if (tag === 'table') {
+    const table = convertTable(el);
+    if (table) return table;
+    warnings.push('A <table> with merged cells or nested markup was kept as raw HTML.');
+    return makeNode('html', el, { html: el.outerHTML });
+  }
+
   if (tag === 'a') {
     const href = el.getAttribute('href') ?? '#';
     const target = el.getAttribute('target') ?? '_self';
@@ -170,6 +193,65 @@ function convertElement(el: Element, warnings: string[]): BuilderNode | null {
   // Unknown tag: preserve it rather than guess.
   warnings.push(`<${tag}> has no widget equivalent and was kept as raw HTML.`);
   return makeNode('html', el, { html: el.outerHTML });
+}
+
+/**
+ * Maps `<ul>`/`<ol>` onto the List widget when every item is plain text or a
+ * single link — the shape of a nav menu or feature list. Anything richer keeps
+ * its markup, because flattening it to strings would silently drop content.
+ */
+function convertList(el: Element, ordered: boolean): BuilderNode | null {
+  const items = Array.from(el.children).filter((child) => child.tagName.toLowerCase() === 'li');
+  if (!items.length || items.length !== el.children.length) return null;
+
+  const converted: { text: string; href: string }[] = [];
+
+  for (const item of items) {
+    const elements = Array.from(item.children);
+
+    if (elements.length === 0) {
+      converted.push({ text: item.textContent?.trim() ?? '', href: '' });
+      continue;
+    }
+    // A nav item is an <li> wrapping exactly one <a>.
+    if (elements.length === 1 && elements[0].tagName.toLowerCase() === 'a' && !hasElementChildren(elements[0])) {
+      converted.push({
+        text: elements[0].textContent?.trim() ?? '',
+        href: elements[0].getAttribute('href') ?? '',
+      });
+      continue;
+    }
+    return null;
+  }
+
+  return makeNode('list', el, { ordered, items: converted });
+}
+
+/** Maps a simple rectangular `<table>`; anything with spans stays verbatim. */
+function convertTable(el: Element): BuilderNode | null {
+  const rowElements = Array.from(el.querySelectorAll('tr'));
+  if (!rowElements.length) return null;
+
+  const rows: string[][] = [];
+  let headerRow = false;
+
+  for (const [index, row] of rowElements.entries()) {
+    const cells = Array.from(row.children).filter((cell) =>
+      ['td', 'th'].includes(cell.tagName.toLowerCase()),
+    );
+    if (!cells.length) return null;
+
+    for (const cell of cells) {
+      // Merged cells cannot be represented by a rectangular array.
+      if (cell.hasAttribute('colspan') || cell.hasAttribute('rowspan')) return null;
+      if (hasElementChildren(cell)) return null;
+    }
+
+    if (index === 0 && cells.every((cell) => cell.tagName.toLowerCase() === 'th')) headerRow = true;
+    rows.push(cells.map((cell) => cell.textContent?.trim() ?? ''));
+  }
+
+  return makeNode('table', el, { headerRow, rows });
 }
 
 function convertChildren(parent: Element, warnings: string[]): BuilderNode[] {

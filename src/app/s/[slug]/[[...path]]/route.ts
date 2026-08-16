@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/db';
 import { normalisePath } from '@/lib/projects';
 import { composePage, renderDocument } from '@/lib/builder/render';
+import { readTheme } from '@/lib/builder/theme';
 import type { BuilderNode } from '@/lib/builder/types';
 
 /**
@@ -46,7 +47,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ slug
   const tree = (page.publishedTree ?? page.tree) as unknown as BuilderNode | null;
   if (!tree) return notFoundResponse('This page has not been published yet.');
 
-  const theme = (project.theme ?? {}) as { externalStylesheets?: string[] };
+  const theme = readTheme(project.theme);
   const externalLinks = (theme.externalStylesheets ?? [])
     .filter((href) => /^https?:\/\//i.test(href))
     .map((href) => `<link rel="stylesheet" href="${href.replace(/"/g, '&quot;')}">`)
@@ -70,6 +71,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ slug
     siteName: project.name,
     importedCss: project.importedCss,
     customCss: project.customCss,
+    theme,
     headExtra: externalLinks,
   }).replace('<script>', `<script nonce="${nonce}">`);
 

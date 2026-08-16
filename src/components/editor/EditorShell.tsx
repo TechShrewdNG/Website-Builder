@@ -12,9 +12,11 @@ import WidgetPalette from './WidgetPalette';
 import type { DragPayload } from './dragState';
 import Icon from '@/components/Icon';
 import { createNode } from '@/lib/builder/widgets';
+import type { ProjectTheme } from '@/lib/builder/theme';
 import {
   createRoot,
   cloneWithNewIds,
+  setStateStyle,
   duplicateNode,
   findNode,
   findParent,
@@ -34,6 +36,7 @@ export interface EditorProject {
   importedCss: string | null;
   customCss: string | null;
   externalStylesheets: string[];
+  theme: ProjectTheme;
   siteUrl: string | null;
   faviconData: string | null;
   headerTree: BuilderNode | null;
@@ -111,6 +114,10 @@ export default function EditorShell({ project: initialProject, pages: initialPag
   const historyRef = useRef<Record<string, { past: BuilderNode[]; future: BuilderNode[] }>>({});
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const seoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const themeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [canvasApi, setCanvasApi] = useState<{
+    matches: (nodeId: string, selector: string) => boolean;
+  } | null>(null);
 
   const activePage = pages.find((page) => page.id === activeId) ?? pages[0];
 
@@ -493,6 +500,35 @@ export default function EditorShell({ project: initialProject, pages: initialPag
     [activePage?.id],
   );
 
+  /** Persists the theme (tokens and rule overrides), debounced like styles. */
+  const saveTheme = useCallback(
+    (next: ProjectTheme) => {
+      setProject((prev) => ({ ...prev, theme: next }));
+      if (themeTimer.current) clearTimeout(themeTimer.current);
+      themeTimer.current = setTimeout(() => {
+        void fetch(`/api/projects/${initialProject.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ theme: next }),
+        });
+      }, AUTOSAVE_DELAY);
+    },
+    [initialProject.id],
+  );
+
+  const handleRuleChange = useCallback(
+    (selector: string, declarations: StyleMap) => {
+      const overrides = { ...(project.theme.ruleOverrides ?? {}) };
+      // An empty override is the same as none; keeping it would render an
+      // empty rule and make the "edited" badge lie.
+      if (Object.keys(declarations).length === 0) delete overrides[selector];
+      else overrides[selector] = declarations;
+
+      saveTheme({ ...project.theme, ruleOverrides: overrides });
+    },
+    [project.theme, saveTheme],
+  );
+
   async function togglePublish() {
     setPublishing(true);
     try {
@@ -697,6 +733,8 @@ export default function EditorShell({ project: initialProject, pages: initialPag
             onUndo={undo}
             onRedo={redo}
             onClipboard={handleClipboard}
+            onReady={setCanvasApi}
+            theme={project.theme}
           />
         </main>
 
@@ -709,6 +747,18 @@ export default function EditorShell({ project: initialProject, pages: initialPag
             breakpoint={breakpoint}
             onPropsChange={(patch) => selectedId && commit(setProps(tree, selectedId, patch))}
             onStyleChange={(patch: StyleMap) => selectedId && commit(setStyle(tree, selectedId, breakpoint, patch))}
+            onStateStyleChange={(state, patch) =>
+              selectedId && commit(setStateStyle(tree, selectedId, state, patch))
+            }
+            css={{
+              importedCss: project.importedCss,
+              overrides: project.theme.ruleOverrides ?? {},
+              matches:
+                canvasApi && selectedId
+                  ? (selector: string) => canvasApi.matches(selectedId, selector)
+                  : null,
+              onRuleChange: handleRuleChange,
+            }}
             onDuplicate={() => selectedId && commit(duplicateNode(tree, selectedId))}
             onDelete={() => selectedId && handleDelete(selectedId)}
           />

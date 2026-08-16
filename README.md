@@ -114,15 +114,20 @@ imported stylesheet's class names. Specificity alone isn't enough to make edits
 stick — `[data-ws="x"]` is (0,1,0) and loses to an ordinary template rule like
 `.hero h1` (0,1,1) — so the cascade uses **layers**:
 
-| Layer         | Contents                            |
-| ------------- | ----------------------------------- |
-| `ws-base`     | reset + dynamic-widget presentation |
-| `ws-template` | CSS from the imported template      |
-| *(unlayered)* | generated per-element styles        |
-| *(unlayered)* | your Project CSS, last              |
+| Layer         | Contents                                            |
+| ------------- | ---------------------------------------------------- |
+| `ws-base`     | reset + dynamic-widget presentation                   |
+| `ws-template` | CSS from the imported template                        |
+| *(unlayered)* | design token overrides (`:root { --brand: … }`)       |
+| *(unlayered)* | CSS rule overrides (edits to the template's rules)    |
+| *(unlayered)* | generated per-element styles                          |
+| *(unlayered)* | your Project CSS, last                                |
 
 Unlayered rules beat layered ones regardless of specificity, so clicking a
-control always wins without `!important` anywhere.
+control always wins without `!important` anywhere. The unlayered blocks are
+themselves ordered so the more specific action wins: a rule-level edit beats
+the template, and selecting one element and changing it still beats editing
+the rule that element happens to match.
 
 Responsive styles are separate blocks per breakpoint (desktop / tablet ≤1024px /
 mobile ≤767px), emitted as real media queries for export and publish. In the
@@ -140,15 +145,66 @@ touch it:
 - classes, ids and data attributes are preserved on every node;
 - the template's `<style>` blocks are kept verbatim as project CSS;
 - inline `style` attributes become editable desktop styles;
-- tables, forms, lists, SVG and embeds are kept as raw HTML rather than
-  approximated into something that would render differently.
+- simple `<ul>`/`<ol>` lists (nav menus, feature lists) and rectangular
+  `<table>`s become real List and Table widgets — editable rows and items,
+  not opaque markup. A list item with block content, or a table with merged
+  cells, keeps its markup verbatim instead, since flattening either would
+  silently drop content;
+- forms, SVG, embeds and anything else with no faithful widget equivalent are
+  kept as raw HTML rather than approximated into something that renders
+  differently.
 
 Known limits, surfaced as warnings at import time:
 
 - `<script>` tags are dropped. Re-add what you need via an HTML widget.
-- Stylesheets referenced by *relative* path can't be fetched; paste their
-  contents into Project CSS. Absolute `https://` ones are carried through as
-  `<link>` tags.
+
+#### Folder and .zip import
+
+A single `.html` file leaves everything it references dangling — a linked
+stylesheet is unreachable, local images 404. Importing a whole folder or
+`.zip` (`src/lib/builder/bundle.ts`) resolves that instead:
+
+- every `.html` file becomes a page, with `index.html` leading regardless of
+  archive order — it has to, since the first page becomes the site's `/`;
+- `<link rel="stylesheet">` targets found in the bundle are read and merged,
+  once each even when several pages share one file;
+- local images are inlined as data URLs and every reference rewritten —
+  `<img src>`, slider images, and `url(...)` inside both inline styles and
+  linked stylesheets, resolved relative to whichever file referenced them;
+- absolute URLs (`https://…`) are left as `<link>`/`src` references, never
+  reported as missing;
+- anything that still can't be resolved is listed by exact path in the import
+  summary rather than silently dropped or silently broken — the file may
+  exist on the server the site is going to, so the reference is kept as-is.
+
+#### CSS rule editing and design tokens
+
+The per-element style panel only ever wrote `[data-ws="id"]` overrides — right
+for one element, wrong for a template, where changing `.btn` should change
+every button. `parseRules()` (`src/lib/builder/css.ts`) scans the imported
+stylesheet with a small brace-depth scanner (not a full CSS parser — it never
+needs to reproduce the source) and the inspector lists every rule that matches
+the selected element, editable in place.
+
+Edits are stored as a selector-keyed override map on the project rather than
+rewritten into the imported stylesheet, so the original is never reformatted
+and clearing an edit restores the template's value exactly. They compile
+unlayered — see below — so they beat the template regardless of specificity,
+and *before* per-element styles, so "select an element and change it" is still
+the most specific action available.
+
+`:root { --custom-property: … }` declarations are surfaced separately as
+design tokens (Site panel), so a template's whole palette can be recoloured
+from one place instead of hunting down every reference to a hex value.
+
+`@import` is hoisted above the cascade layer it would otherwise sit inside —
+browsers drop an `@import` that isn't the first thing in a stylesheet, which
+would silently take a template's webfonts with it.
+
+Per-element styling also gained `:hover`/`:focus` states, applied at every
+breakpoint rather than per-width — hover has no meaning on a touch device, so
+a per-breakpoint hover matrix would quadruple the panel for a case nobody
+asks for.
 
 ### Global header and footer
 
@@ -178,8 +234,8 @@ restore itself undoable.
 ### Widgets
 
 Layout: section, container, columns. Content: heading, text, image, button,
-icon, divider, spacer, link box, raw HTML. Dynamic: slider, tabs, accordion,
-counter.
+icon, divider, spacer, link box, list, table, raw HTML. Dynamic: slider, tabs,
+accordion, counter.
 
 Dynamic widgets render accessible static markup (roles, `aria-selected`,
 `aria-expanded`) that reads correctly with JS off; a single dependency-free
@@ -221,27 +277,33 @@ design changes.
 ## Tests
 
 ```bash
-npm test                  # 29 unit tests: model, CSS, render, runtime, export
+npm test                  # 68 unit tests: model, CSS, render, runtime, export, import, bundles
 npm run typecheck
 ```
 
 The unit suite covers the tree operations (including the invariants that stop a
 drop from corrupting the document), CSS compilation and breakpoint flattening,
-escaping, the dynamic-widget runtime driven in a real DOM via jsdom, and export
-layout.
+escaping, the dynamic-widget runtime driven in a real DOM via jsdom, export
+layout, the list/table import mapping, `@import` hoisting, the CSS rule
+scanner (including a brace inside a quoted string, which would desync a naive
+one), and the bundle importer's path resolution and asset rewriting.
 
 Browser checks need a running server and a registered account:
 
 ```bash
 npm run build && npm start
-npm run test:e2e                          # editor: selection, DnD, styles, autosave, publish
-npm run test:e2e:import path/to/page.html # import fidelity and override behaviour
-npm run test:e2e:features                 # globals, SEO, snapshots, media, clipboard
+npm run test:e2e                                # editor: selection, DnD, styles, autosave, publish
+npm run test:e2e:import path/to/page.html       # single-file import fidelity and override behaviour
+npm run test:e2e:import-features path/to/page.html  # list/table widgets, CSS rule editing, tokens
+npm run test:e2e:bundle path/to/site.zip        # .zip import: merged CSS, resolved images, multi-page
+npm run test:e2e:bundle-folder path/to/site/    # folder import (webkitdirectory), same checks
+npm run test:e2e:features                       # globals, SEO, snapshots, media, clipboard
 ```
 
 These drive Chromium through Playwright and cover what unit tests can't:
-cross-iframe drag-and-drop, inline editing, and whether a style edit visually
-beats the imported stylesheet.
+cross-iframe drag-and-drop, inline editing, whether a style edit visually beats
+the imported stylesheet, and whether editing `.btn` in the rule editor actually
+restyles every button on the live canvas.
 
 ## Security notes
 
@@ -265,6 +327,14 @@ Scoped honestly, since these are the obvious next asks:
 
 - Custom domains for published sites (only `/s/<slug>` today).
 - Forms — there's no submission endpoint, so no form widget.
-- Global theme tokens (colour/font palettes) — the `Project.theme` column is
-  reserved for this but only carries imported stylesheet links today.
+- A full CSS parser. The rule scanner in `src/lib/builder/css.ts` treats
+  selectors as opaque strings, so ordinary selectors and pseudo-classes
+  (`:has()` included) parse fine, and rules nested inside `@media`/`@supports`
+  are found regardless of depth. What it doesn't handle is *native CSS
+  nesting* — a selector rule nested inside another selector rule
+  (`.card { & > img { … } }`) rather than inside an at-rule — which produces
+  a garbled declaration instead of two separate editable rules. The template
+  still renders exactly as authored either way, since the original
+  stylesheet is never rewritten; only the rule *editor's* view of it is
+  affected.
 - Multi-user collaboration.

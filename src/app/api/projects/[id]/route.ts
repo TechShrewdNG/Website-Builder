@@ -17,6 +17,13 @@ const patchSchema = z.object({
   // `null` clears a global section; omitting it leaves the slot untouched.
   headerTree: z.unknown().optional(),
   footerTree: z.unknown().optional(),
+  theme: z
+    .object({
+      externalStylesheets: z.array(z.string()).optional(),
+      tokens: z.record(z.string()).optional(),
+      ruleOverrides: z.record(z.record(z.string())).optional(),
+    })
+    .optional(),
 });
 
 type Params = { params: Promise<{ id: string }> };
@@ -44,13 +51,14 @@ export async function PATCH(request: Request, { params }: Params) {
     const { id } = await params;
     await requireProject(id, userId);
 
-    const { headerTree, footerTree, siteUrl, ...rest } = parsed.data;
+    const { headerTree, footerTree, siteUrl, theme, ...rest } = parsed.data;
     const project = await prisma.project.update({
       where: { id },
       data: {
         ...rest,
         // Trailing slashes would double up when canonical URLs are built.
         ...(siteUrl === undefined ? {} : { siteUrl: siteUrl.trim().replace(/\/+$/, '') || null }),
+        ...(theme === undefined ? {} : { theme: asJson(theme) }),
         ...(headerTree === undefined ? {} : { headerTree: headerTree === null ? Prisma.DbNull : asJson(headerTree) }),
         ...(footerTree === undefined ? {} : { footerTree: footerTree === null ? Prisma.DbNull : asJson(footerTree) }),
       },

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import Icon from '@/components/Icon';
+import { extractTokens } from '@/lib/builder/css';
 import type { EditorProject } from './EditorShell';
 
 interface Asset {
@@ -124,6 +125,8 @@ export default function SitePanel({ project, page, onProjectChange, onPageChange
         </p>
       </Section>
 
+      <DesignTokens project={project} onSave={saveProject} />
+
       <MediaLibrary projectId={project.id} />
 
       <Section title="Project CSS">
@@ -153,6 +156,83 @@ export default function SitePanel({ project, page, onProjectChange, onPageChange
 
       {status && <p className="mt-4 text-[11px] text-muted">{status}</p>}
     </div>
+  );
+}
+
+/**
+ * Custom properties declared by the imported template.
+ *
+ * A template that defines its palette in `:root` can be recoloured entirely
+ * from here — the alternative is finding each hex value in a stylesheet and
+ * hoping every usage was through the variable.
+ */
+function DesignTokens({
+  project,
+  onSave,
+}: {
+  project: EditorProject;
+  onSave: (patch: Partial<EditorProject>) => Promise<void>;
+}) {
+  const declared = extractTokens(project.importedCss);
+  const overrides = project.theme.tokens ?? {};
+  const names = Object.keys({ ...declared, ...overrides }).sort();
+
+  if (!names.length) return null;
+
+  const update = (name: string, value: string) => {
+    const next = { ...overrides };
+    // Back to the declared value means there is no override to store.
+    if (value === '' || value === declared[name]) delete next[name];
+    else next[name] = value;
+    void onSave({ theme: { ...project.theme, tokens: next } });
+  };
+
+  return (
+    <Section title="Design tokens">
+      <div className="flex flex-col gap-1.5">
+        {names.map((name) => {
+          const value = overrides[name] ?? declared[name] ?? '';
+          const isColour = /^#|^rgb|^hsl/i.test(value);
+
+          return (
+            <label key={name} className="flex items-center gap-1.5">
+              <code className="w-[86px] shrink-0 truncate font-mono text-[10px] text-muted" title={name}>
+                {name}
+              </code>
+              {isColour && (
+                <input
+                  type="color"
+                  aria-label={`${name} colour`}
+                  className="h-7 w-7 shrink-0 cursor-pointer rounded border border-edge bg-panelRaised p-0.5"
+                  value={/^#[0-9a-f]{6}$/i.test(value) ? value : '#000000'}
+                  onChange={(event) => update(name, event.target.value)}
+                />
+              )}
+              <input
+                className="ws-field py-1 font-mono text-[11px]"
+                value={value}
+                onChange={(event) => update(name, event.target.value)}
+              />
+              {overrides[name] !== undefined && (
+                <button
+                  type="button"
+                  title="Revert to the template's value"
+                  aria-label={`Revert ${name}`}
+                  className="shrink-0 text-[10px] text-faint transition-colors hover:text-white"
+                  onClick={() => update(name, '')}
+                >
+                  ↺
+                </button>
+              )}
+            </label>
+          );
+        })}
+      </div>
+      <p className="mt-2 text-[11px] leading-relaxed text-faint">
+        From the template&apos;s <code className="text-muted">:root</code>. Changing one updates
+        everything that references it.
+      </p>
+    </Section>
   );
 }
 

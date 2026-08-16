@@ -6,7 +6,15 @@
  */
 
 import { createNode, newId } from './widgets';
-import { canAcceptChild, emptyStyles, ROOT_ID, type BuilderNode, type Breakpoint, type StyleMap, type WidgetType } from './types';
+import {
+  canAcceptChild,
+  emptyStyles,
+  ROOT_ID,
+  type BuilderNode,
+  type Breakpoint,
+  type StyleMap,
+  type StyleState,
+} from './types';
 
 export function createRoot(children: BuilderNode[] = []): BuilderNode {
   return { id: ROOT_ID, type: 'container', props: { tag: 'div' }, styles: emptyStyles(), children };
@@ -87,6 +95,27 @@ export function setStyle(
       if (value === '' || value == null) delete merged[key];
     }
     return { ...node, styles: { ...node.styles, [breakpoint]: merged } };
+  });
+}
+
+/** Same semantics as setStyle, for `:hover` / `:focus` declarations. */
+export function setStateStyle(
+  root: BuilderNode,
+  id: string,
+  state: StyleState,
+  patch: StyleMap,
+): BuilderNode {
+  return updateNode(root, id, (node) => {
+    const merged: StyleMap = { ...(node.states?.[state] ?? {}), ...patch };
+    for (const [key, value] of Object.entries(patch)) {
+      if (value === '' || value == null) delete merged[key];
+    }
+
+    const states = { ...node.states, [state]: merged };
+    // Drop the key entirely when empty, so trees stay comparable and clean.
+    if (Object.keys(merged).length === 0) delete states[state];
+
+    return { ...node, states: Object.keys(states).length ? states : undefined };
   });
 }
 

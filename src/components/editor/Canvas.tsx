@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef } from 'react';
 
 import { compileCss, inLayer, BASE_CSS, LAYER_ORDER } from '@/lib/builder/css';
 import { composePage, renderNode, WIDGET_CSS } from '@/lib/builder/render';
+import { compileRuleOverrides, compileTokens } from '@/lib/builder/css';
+import type { ProjectTheme } from '@/lib/builder/theme';
 import { RUNTIME_JS } from '@/lib/builder/runtime';
 import { canAcceptChild, type BuilderNode, type Breakpoint, ROOT_ID } from '@/lib/builder/types';
 import { findNode } from '@/lib/builder/tree';
@@ -27,6 +29,8 @@ interface Props {
   chrome?: { header: BuilderNode | null; footer: BuilderNode | null };
   importedCss?: string | null;
   customCss?: string | null;
+  /** Token and rule-level edits, previewed alongside the template CSS. */
+  theme?: ProjectTheme;
   externalStylesheets?: string[];
   selectedId: string | null;
   breakpoint: Breakpoint;
@@ -38,6 +42,15 @@ interface Props {
   onRedo: () => void;
   /** Clipboard shortcuts pressed while focus is inside the canvas. */
   onClipboard: (action: 'copy' | 'cut' | 'paste') => void;
+  /**
+   * Hands up a matcher once the canvas exists.
+   *
+   * Deciding whether `.hero h1` applies to a node means asking a real element
+   * in a real document — reimplementing selector matching would be both large
+   * and wrong. The browser already does it, so the CSS rule panel borrows the
+   * canvas's own DOM.
+   */
+  onReady?: (api: { matches: (nodeId: string, selector: string) => boolean }) => void;
 }
 
 /** Widths the canvas is constrained to per breakpoint. */
@@ -86,6 +99,7 @@ export default function Canvas({
   chrome,
   importedCss,
   customCss,
+  theme,
   externalStylesheets,
   selectedId,
   breakpoint,
@@ -96,6 +110,7 @@ export default function Canvas({
   onUndo,
   onRedo,
   onClipboard,
+  onReady,
 }: Props) {
   const frameRef = useRef<HTMLIFrameElement>(null);
   const readyRef = useRef(false);
@@ -120,6 +135,7 @@ export default function Canvas({
     doc.write(
       '<!doctype html><html><head><meta charset="utf-8">' +
         '<style id="ws-base"></style><style id="ws-imported"></style>' +
+        '<style id="ws-theme"></style>' +
         '<style id="ws-page"></style><style id="ws-custom"></style>' +
         '<style id="ws-editor"></style></head><body></body></html>',
     );
@@ -135,6 +151,13 @@ export default function Canvas({
 
     attachListeners(doc);
     readyRef.current = true;
+
+    onReady?.({
+      matches: (nodeId, selector) => {
+        const element = doc.querySelector(`[data-ws="${CSS.escape(nodeId)}"]`);
+        return element ? element.matches(selector) : false;
+      },
+    });
     // Listeners read live values through refs, so they are bound exactly once.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -150,6 +173,18 @@ export default function Canvas({
     const custom = doc.getElementById('ws-custom');
     if (custom) custom.textContent = customCss ?? '';
 
+    // Sits between the template and the per-element rules, matching the order
+    // buildStylesheet uses for export and publish.
+    const themed = doc.getElementById('ws-theme');
+    if (themed) {
+      themed.textContent = [
+        compileTokens(theme?.tokens ?? {}),
+        compileRuleOverrides(theme?.ruleOverrides),
+      ]
+        .filter(Boolean)
+        .join('\n\n');
+    }
+
     for (const href of externalStylesheets ?? []) {
       if (!/^https?:\/\//i.test(href)) continue;
       if (doc.querySelector(`link[href="${CSS.escape(href)}"]`)) continue;
@@ -158,7 +193,7 @@ export default function Canvas({
       link.href = href;
       doc.head.appendChild(link);
     }
-  }, [importedCss, customCss, externalStylesheets]);
+  }, [importedCss, customCss, externalStylesheets, theme]);
 
   // --- render on every tree change ----------------------------------------
   useEffect(() => {

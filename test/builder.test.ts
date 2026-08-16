@@ -2,12 +2,29 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { JSDOM } from 'jsdom';
 
-import { compileCss } from '../src/lib/builder/css';
+import {
+  compileCss,
+  compileRuleOverrides,
+  compileTokens,
+  extractTokens,
+  inLayer,
+  parseRules,
+} from '../src/lib/builder/css';
 import { buildExport, outputPathFor } from '../src/lib/builder/export';
-import { composePage, renderDocument, renderNode } from '../src/lib/builder/render';
+import { buildStylesheet, composePage, renderDocument, renderNode } from '../src/lib/builder/render';
 import { createNode, WIDGETS } from '../src/lib/builder/widgets';
 import { TEMPLATES, getTemplate } from '../src/lib/builder/templates';
-import { createRoot, findNode, flatten, insertNode, moveNode, removeNode, setProps, setStyle } from '../src/lib/builder/tree';
+import {
+  createRoot,
+  findNode,
+  flatten,
+  insertNode,
+  moveNode,
+  removeNode,
+  setProps,
+  setStateStyle,
+  setStyle,
+} from '../src/lib/builder/tree';
 import type { BuilderNode } from '../src/lib/builder/types';
 
 // ---------------------------------------------------------------------------
@@ -540,4 +557,145 @@ test('templates that ship a header and footer keep them out of the page tree', (
   // would not change the others.
   const pageHtml = renderNode(landing.page);
   assert.ok(!pageHtml.includes(`data-ws="${landing.header!.id}"`));
+});
+
+// ---------------------------------------------------------------------------
+// Imported CSS: @import, rules, tokens, states
+// ---------------------------------------------------------------------------
+
+test('@import is hoisted out of the cascade layer', () => {
+  const css = "@import url('https://fonts.example/x.css');\n.hero { color: red }";
+  const wrapped = inLayer('ws-template', css);
+
+  // Inside a layer block browsers drop @import entirely, silently taking the
+  // template's webfonts with it.
+  assert.ok(wrapped.startsWith("@import url('https://fonts.example/x.css');"));
+  assert.ok(wrapped.indexOf('@import') < wrapped.indexOf('@layer'));
+  assert.match(wrapped, /@layer ws-template \{[\s\S]*\.hero/);
+});
+
+test('a stylesheet of only @import needs no layer block at all', () => {
+  assert.equal(inLayer('ws-template', "@import url('a.css');"), "@import url('a.css');");
+  assert.equal(inLayer('ws-template', '   '), '');
+});
+
+test('rules are parsed with their media-query context', () => {
+  const rules = parseRules(`
+    .nav { display: flex; gap: 24px }
+    @media (max-width: 600px) { .nav { display: none } }
+  `);
+
+  assert.equal(rules.length, 2);
+  assert.deepEqual(rules[0], { selector: '.nav', declarations: { display: 'flex', gap: '24px' }, context: undefined });
+  assert.equal(rules[1].context, '@media (max-width: 600px)');
+});
+
+test('a brace inside a string does not desync the parser', () => {
+  // `content: "}"` would otherwise end the block early and corrupt everything
+  // after it in the file.
+  const rules = parseRules('.a::after { content: "}"; color: red } .b { color: blue }');
+
+  assert.equal(rules.length, 2);
+  assert.equal(rules[0].declarations.color, 'red');
+  assert.equal(rules[1].selector, '.b');
+});
+
+test('pseudo-classes like :has() parse as ordinary selectors', () => {
+  // The scanner treats selectors as opaque strings — it never has to
+  // understand them, only find where they end — so modern pseudo-classes
+  // parse the same as anything else. Real matching happens in the browser via
+  // element.matches(), which supports :has() directly.
+  const rules = parseRules('.card:has(> img) { color: red }');
+  assert.equal(rules.length, 1);
+  assert.equal(rules[0].selector, '.card:has(> img)');
+  assert.equal(rules[0].declarations.color, 'red');
+});
+
+test('rules nested two levels inside at-rules are still found', () => {
+  const rules = parseRules(`
+    @media (min-width: 1px) {
+      @supports (display: grid) {
+        .a { color: blue }
+      }
+    }
+  `);
+  assert.equal(rules.length, 1);
+  assert.equal(rules[0].selector, '.a');
+  // Only the innermost context is reported; that's a known, documented
+  // simplification rather than a bug — the rule still shows up and is
+  // editable, which is what the panel needs.
+  assert.equal(rules[0].context, '@supports (display: grid)');
+});
+
+test('native CSS nesting (a rule inside a rule) does not crash the scanner', () => {
+  // `.card { & > img { color: red } }` nests a selector rule inside another
+  // selector rule, rather than inside an at-rule. The scanner doesn't model
+  // this — it reads the outer rule's body as flat text — so the result is a
+  // single garbled declaration rather than two separate editable rules. That
+  // is a known limitation (see README), but it must never throw, and the
+  // original stylesheet must never be touched by it.
+  const css = '.card { & > img { color: red } font-size: 10px }';
+  assert.doesNotThrow(() => parseRules(css));
+
+  const rules = parseRules(css);
+  assert.equal(rules.length, 1);
+  assert.equal(rules[0].selector, '.card');
+  // The nested block is not understood as its own rule.
+  assert.ok(!rules.some((rule) => rule.selector.includes('img')));
+});
+
+test('rule overrides beat the template but lose to per-element styles', () => {
+  const heading = createNode('heading');
+  heading.classes = ['title'];
+  let tree: BuilderNode = createRoot([heading]);
+  tree = setStyle(tree, heading.id, 'desktop', { color: 'green' });
+
+  const css = buildStylesheet(tree, {
+    importedCss: '.title { color: red }',
+    theme: { ruleOverrides: { '.title': { color: 'blue' } }, tokens: { '--brand': '#123456' } },
+  });
+
+  // Template is layered, so both later blocks outrank it regardless of
+  // specificity; per-element comes last and therefore wins outright.
+  assert.ok(css.indexOf('@layer ws-template') < css.indexOf('color: blue'));
+  assert.ok(css.indexOf('color: blue') < css.indexOf('color: green'));
+  assert.match(css, /--brand: #123456/);
+});
+
+test('an emptied override disappears rather than emitting an empty rule', () => {
+  assert.equal(compileRuleOverrides({ '.a': {} }), '');
+  assert.equal(compileRuleOverrides({}), '');
+  assert.equal(compileRuleOverrides(null), '');
+  assert.match(compileRuleOverrides({ '.a': { color: 'red' } }), /\.a \{\n {2}color: red;\n\}/);
+});
+
+test('tokens are read from :root and overrides re-emitted', () => {
+  const tokens = extractTokens(':root { --brand: #0a5; --radius: 8px; color: red }');
+  assert.deepEqual(tokens, { '--brand': '#0a5', '--radius': '8px' });
+
+  // A plain declaration is not a token and must not leak into the block.
+  assert.ok(!compileTokens(tokens).includes('color: red'));
+  assert.equal(compileTokens({}), '');
+});
+
+test('state styles compile to :hover and :focus, at every width', () => {
+  const button = createNode('button');
+  let tree: BuilderNode = createRoot([button]);
+  tree = setStateStyle(tree, button.id, 'hover', { 'background-color': 'black' });
+
+  const css = compileCss(tree);
+  assert.match(css, new RegExp(`\\[data-ws="${button.id}"\\]:hover \\{`));
+  // Hover is not breakpoint-scoped, so it must not land inside a media query.
+  assert.ok(css.indexOf(':hover') < (css.indexOf('@media') === -1 ? Infinity : css.indexOf('@media')));
+});
+
+test('clearing the last state declaration removes the state entirely', () => {
+  const button = createNode('button');
+  let tree: BuilderNode = createRoot([button]);
+  tree = setStateStyle(tree, button.id, 'hover', { color: 'red' });
+  assert.ok(findNode(tree, button.id)?.states?.hover);
+
+  tree = setStateStyle(tree, button.id, 'hover', { color: '' });
+  assert.equal(findNode(tree, button.id)?.states, undefined);
+  assert.ok(!compileCss(tree).includes(':hover'));
 });

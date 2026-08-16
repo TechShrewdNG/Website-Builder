@@ -3,7 +3,8 @@
 import { useRef, useState } from 'react';
 
 import { WIDGETS, type Control } from '@/lib/builder/widgets';
-import type { BuilderNode, Breakpoint, StyleMap } from '@/lib/builder/types';
+import type { BuilderNode, Breakpoint, StyleMap, StyleState } from '@/lib/builder/types';
+import CssRules from './CssRules';
 import StyleControls from './StyleControls';
 import Icon from '@/components/Icon';
 
@@ -15,6 +16,14 @@ interface Props {
   breakpoint: Breakpoint;
   onPropsChange: (patch: Record<string, unknown>) => void;
   onStyleChange: (patch: StyleMap) => void;
+  onStateStyleChange: (state: StyleState, patch: StyleMap) => void;
+  /** The template's stylesheet and any edits already made to its rules. */
+  css: {
+    importedCss: string | null;
+    overrides: Record<string, StyleMap>;
+    matches: ((selector: string) => boolean) | null;
+    onRuleChange: (selector: string, declarations: StyleMap) => void;
+  };
   onDuplicate: () => void;
   onDelete: () => void;
 }
@@ -28,6 +37,8 @@ export default function Inspector({
   breakpoint,
   onPropsChange,
   onStyleChange,
+  onStateStyleChange,
+  css,
   onDuplicate,
   onDelete,
 }: Props) {
@@ -133,7 +144,28 @@ export default function Inspector({
             </div>
           )
         ) : (
-          <StyleControls node={node} breakpoint={breakpoint} onChange={onStyleChange} />
+          <>
+            <StyleControls
+              node={node}
+              breakpoint={breakpoint}
+              onChange={onStyleChange}
+              onStateChange={onStateStyleChange}
+            />
+
+            <section className="mt-4 border-t border-edge pt-3">
+              <h3 className="mb-2 text-[12px] font-semibold text-neutral-200">Stylesheet rules</h3>
+              {css.matches ? (
+                <CssRules
+                  importedCss={css.importedCss}
+                  overrides={css.overrides}
+                  matches={css.matches}
+                  onChange={css.onRuleChange}
+                />
+              ) : (
+                <p className="text-[11px] text-faint">Waiting for the canvas…</p>
+              )}
+            </section>
+          </>
         )}
       </div>
     </div>
@@ -243,6 +275,15 @@ function ControlField({
         </div>
       );
 
+    case 'table':
+      return (
+        <TableField
+          control={control}
+          rows={Array.isArray(value) ? (value as string[][]) : []}
+          onChange={onChange}
+        />
+      );
+
     case 'repeater':
       return (
         <Repeater
@@ -268,6 +309,96 @@ function ControlField({
         </label>
       );
   }
+}
+
+/** Grid editor for the Table widget's rows and columns. */
+function TableField({
+  control,
+  rows,
+  onChange,
+}: {
+  control: Control;
+  rows: string[][];
+  onChange: (value: unknown) => void;
+}) {
+  const width = rows.reduce((max, row) => Math.max(max, row.length), 1);
+
+  const setCell = (rowIndex: number, cellIndex: number, text: string) => {
+    onChange(
+      rows.map((row, r) =>
+        r === rowIndex
+          ? Array.from({ length: width }, (_, c) => (c === cellIndex ? text : row[c] ?? ''))
+          : row,
+      ),
+    );
+  };
+
+  return (
+    <div>
+      <span className="ws-label">{control.label}</span>
+
+      <div className="thin-scroll overflow-x-auto">
+        <table className="w-full border-separate border-spacing-0.5">
+          <tbody>
+            {rows.map((row, rowIndex) => (
+              <tr key={rowIndex}>
+                {Array.from({ length: width }, (_, cellIndex) => (
+                  <td key={cellIndex}>
+                    <input
+                      className="ws-field min-w-[72px] px-1.5 py-1 text-[11px]"
+                      value={row[cellIndex] ?? ''}
+                      aria-label={`Row ${rowIndex + 1}, column ${cellIndex + 1}`}
+                      onChange={(event) => setCell(rowIndex, cellIndex, event.target.value)}
+                    />
+                  </td>
+                ))}
+                <td>
+                  <button
+                    type="button"
+                    title="Remove row"
+                    aria-label={`Remove row ${rowIndex + 1}`}
+                    className="flex h-6 w-5 items-center justify-center rounded text-faint transition-colors hover:bg-danger/10 hover:text-danger"
+                    onClick={() => onChange(rows.filter((_, r) => r !== rowIndex))}
+                  >
+                    ✕
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="mt-2 flex gap-1">
+        <button
+          type="button"
+          className="ws-btn flex-1 py-1 text-[11px]"
+          onClick={() => onChange([...rows, Array.from({ length: width }, () => '')])}
+        >
+          <Icon name="plus" size={12} />
+          Row
+        </button>
+        <button
+          type="button"
+          className="ws-btn flex-1 py-1 text-[11px]"
+          onClick={() => onChange(rows.map((row) => [...Array.from({ length: width }, (_, c) => row[c] ?? ''), '']))}
+        >
+          <Icon name="plus" size={12} />
+          Column
+        </button>
+        <button
+          type="button"
+          className="ws-btn py-1 text-[11px]"
+          disabled={width <= 1}
+          title="Remove the last column"
+          onClick={() => onChange(rows.map((row) => row.slice(0, width - 1)))}
+        >
+          −
+        </button>
+      </div>
+      {control.help && <p className="mt-1.5 text-[11px] leading-relaxed text-faint">{control.help}</p>}
+    </div>
+  );
 }
 
 /**

@@ -8,7 +8,8 @@
  */
 
 import { buildStylesheet, composePage, renderDocument, treeNeedsRuntime, WIDGET_CSS } from './render';
-import { compileCss, inLayer, BASE_CSS, LAYER_ORDER } from './css';
+import { compileCss, compileRuleOverrides, compileTokens, inLayer, BASE_CSS, LAYER_ORDER } from './css';
+import type { ProjectTheme } from './theme';
 import { RUNTIME_JS } from './runtime';
 import type { BuilderNode } from './types';
 
@@ -27,6 +28,7 @@ export interface ExportInput {
   importedCss?: string | null;
   customCss?: string | null;
   externalStylesheets?: string[];
+  theme?: ProjectTheme | null;
   header?: BuilderNode | null;
   footer?: BuilderNode | null;
   favicon?: string | null;
@@ -143,6 +145,8 @@ export function buildExport(input: ExportInput): FileMap {
     LAYER_ORDER,
     inLayer('ws-base', `${BASE_CSS}\n${WIDGET_CSS}`),
     inLayer('ws-template', input.importedCss),
+    compileTokens(input.theme?.tokens ?? {}),
+    compileRuleOverrides(input.theme?.ruleOverrides),
     // Globals are compiled once, not per page: their node ids are shared, so
     // compiling them with each page would emit the same rules N times.
     header ? compileCss(header) : '',

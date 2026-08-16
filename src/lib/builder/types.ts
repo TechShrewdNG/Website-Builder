@@ -24,6 +24,17 @@ export type StyleMap = Record<string, string>;
 
 export type ResponsiveStyles = Record<Breakpoint, StyleMap>;
 
+/**
+ * Interaction states.
+ *
+ * Deliberately not per-breakpoint: hover has no meaning on a touch device, and
+ * a per-breakpoint hover matrix would quadruple the style panel for a case
+ * nobody asks for. One set of state styles applies at every width.
+ */
+export const STATES = ['hover', 'focus'] as const;
+export type StyleState = (typeof STATES)[number];
+export type StateStyles = Partial<Record<StyleState, StyleMap>>;
+
 export type WidgetType =
   // layout
   | 'section'
@@ -39,6 +50,8 @@ export type WidgetType =
   | 'divider'
   | 'spacer'
   | 'link'
+  | 'list'
+  | 'table'
   // dynamic
   | 'slider'
   | 'tabs'
@@ -53,6 +66,8 @@ export interface BuilderNode {
   /** Widget-specific content, e.g. { text, level } for a heading. */
   props: Record<string, unknown>;
   styles: ResponsiveStyles;
+  /** `:hover` / `:focus` declarations, applied at every breakpoint. */
+  states?: StateStyles;
   /**
    * Class names preserved from imported HTML. The original stylesheet is kept
    * verbatim on the project, so keeping these means an imported page still

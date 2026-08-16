@@ -8,7 +8,8 @@
  * changes the markup structure, or the promise above would be a lie.
  */
 
-import { compileCss, inLayer, BASE_CSS, LAYER_ORDER } from './css';
+import { compileCss, compileRuleOverrides, compileTokens, inLayer, BASE_CSS, LAYER_ORDER } from './css';
+import type { ProjectTheme } from './theme';
 import { isContainer, type BuilderNode } from './types';
 import { RUNTIME_JS } from './runtime';
 import { WIDGETS } from './widgets';
@@ -140,6 +141,39 @@ export function renderNode(node: BuilderNode, opts: RenderOptions = {}): string 
 
     case 'spacer':
       return `${open('div', { 'aria-hidden': 'true' })}</div>`;
+
+    case 'list': {
+      const tag = node.props.ordered ? 'ol' : 'ul';
+      const items = (node.props.items as { text?: string; href?: string }[]) ?? [];
+      const body = items
+        .map((item) => {
+          const label = escapeHtml(item.text ?? '');
+          const inner = item.href
+            ? `<a href="${escapeAttr(item.href)}">${label}</a>`
+            : label;
+          return `<li>${inner}</li>`;
+        })
+        .join('');
+      return `${open(tag)}${body}</${tag}>`;
+    }
+
+    case 'table': {
+      const rows = (node.props.rows as string[][]) ?? [];
+      const headerRow = node.props.headerRow !== false;
+      // Ragged rows would produce invalid markup, so every row is padded to
+      // the widest one rather than trusting the stored shape.
+      const width = rows.reduce((max, row) => Math.max(max, row.length), 0);
+
+      const cells = (row: string[], cell: 'td' | 'th') =>
+        Array.from({ length: width }, (_, i) => `<${cell}>${escapeHtml(row[i] ?? '')}</${cell}>`).join('');
+
+      const head = headerRow && rows.length ? `<thead><tr>${cells(rows[0], 'th')}</tr></thead>` : '';
+      const bodyRows = (headerRow ? rows.slice(1) : rows)
+        .map((row) => `<tr>${cells(row, 'td')}</tr>`)
+        .join('');
+
+      return `${open('table')}${head}<tbody>${bodyRows}</tbody></table>`;
+    }
 
     case 'html':
       return `${open('div')}${String(node.props.html ?? '')}</div>`;
@@ -294,6 +328,8 @@ export interface DocumentOptions extends RenderOptions, SeoOptions {
   importedCss?: string | null;
   /** Project-level CSS written by the user. */
   customCss?: string | null;
+  /** Token and rule-level edits to the imported stylesheet. */
+  theme?: ProjectTheme | null;
   /** Extra markup injected into <head> (e.g. the canvas bridge script). */
   headExtra?: string;
   /** Extra markup injected before </body>. */
@@ -401,12 +437,19 @@ ${opts.bodyExtra ?? ''}
 }
 
 /** The full stylesheet for a page, in cascade order. */
-export function buildStylesheet(root: BuilderNode, opts: Pick<DocumentOptions, 'importedCss' | 'customCss'>): string {
+export function buildStylesheet(
+  root: BuilderNode,
+  opts: Pick<DocumentOptions, 'importedCss' | 'customCss' | 'theme'>,
+): string {
   return [
     LAYER_ORDER,
     inLayer('ws-base', `${BASE_CSS}\n${WIDGET_CSS}`),
     // Layered, so a per-element edit outranks it whatever its specificity.
     inLayer('ws-template', opts.importedCss),
+    // Unlayered, so they beat the template; before per-element styles, so
+    // selecting an element and changing it still wins.
+    compileTokens(opts.theme?.tokens ?? {}),
+    compileRuleOverrides(opts.theme?.ruleOverrides),
     compileCss(root),
     // Unlayered and last: hand-written project CSS is the final say.
     opts.customCss ?? '',

@@ -16,6 +16,7 @@
 import {
   BREAKPOINT_MAX_WIDTH,
   BREAKPOINTS,
+  STATES,
   type BuilderNode,
   type Breakpoint,
   type StyleMap,
@@ -76,6 +77,13 @@ function collect(node: BuilderNode, acc: Collected): void {
     const merged: StyleMap = { ...(structural[bp] ?? {}), ...(node.styles?.[bp] ?? {}) };
     const body = declarations(merged);
     if (body) acc[bp].push(`[data-ws="${node.id}"] {\n${body}\n}`);
+  }
+
+  // States are not breakpoint-scoped, so they ride along with desktop and
+  // therefore apply at every width.
+  for (const state of STATES) {
+    const body = declarations(node.states?.[state] ?? {});
+    if (body) acc.desktop.push(`[data-ws="${node.id}"]:${state} {\n${body}\n}`);
   }
 
   // A boxed section centres its children without needing a wrapper element.
@@ -151,9 +159,188 @@ export function compileCss(root: BuilderNode, options: CompileOptions = {}): str
  */
 export const LAYER_ORDER = '@layer ws-base, ws-template;';
 
-/** Wraps a stylesheet in a cascade layer, tolerating empty input. */
+/**
+ * Wraps a stylesheet in a cascade layer, tolerating empty input.
+ *
+ * `@import` is only valid before any style rule, so an @import left inside a
+ * layer block is dropped by every browser — silently taking the template's
+ * webfonts with it. They are hoisted above the block instead.
+ */
 export function inLayer(name: string, css: string | null | undefined): string {
   const body = (css ?? '').trim();
   if (!body) return '';
-  return `@layer ${name} {\n${body}\n}`;
+
+  const imports: string[] = [];
+  const rest = body.replace(/@import\s+[^;]+;/g, (match) => {
+    imports.push(match.trim());
+    return '';
+  });
+
+  const block = rest.trim() ? `@layer ${name} {\n${rest.trim()}\n}` : '';
+  return [...imports, block].filter(Boolean).join('\n');
+}
+
+/**
+ * Collects `--custom-property` declarations from a `:root` block.
+ *
+ * Templates increasingly define their palette this way, and surfacing those
+ * makes a whole imported colour scheme editable from one place instead of
+ * hunting through the stylesheet.
+ */
+export function extractTokens(css: string | null | undefined): Record<string, string> {
+  if (!css) return {};
+  const tokens: Record<string, string> = {};
+
+  for (const block of css.matchAll(/:root\s*\{([^}]*)\}/g)) {
+    for (const declaration of block[1].split(';')) {
+      const index = declaration.indexOf(':');
+      if (index < 0) continue;
+      const name = declaration.slice(0, index).trim();
+      const value = declaration.slice(index + 1).trim();
+      if (name.startsWith('--') && value) tokens[name] = value;
+    }
+  }
+  return tokens;
+}
+
+/** Emits token overrides, which win because they come after the template. */
+export function compileTokens(tokens: Record<string, string>): string {
+  const body = Object.entries(tokens)
+    .filter(([name, value]) => name.startsWith('--') && value !== '')
+    .map(([name, value]) => `  ${name}: ${value};`)
+    .join('\n');
+  return body ? `:root {\n${body}\n}` : '';
+}
+
+/**
+ * Edits to the template's own rules.
+ *
+ * Kept as a separate managed block rather than rewritten into the imported
+ * stylesheet: parsing and re-serialising someone's CSS reformats every line
+ * and risks dropping anything the parser doesn't understand. Emitting the
+ * edits afterwards is non-destructive and trivially reversible — deleting an
+ * override restores the original rule exactly.
+ *
+ * Unlayered, so these beat the template. Per-element styles are emitted after
+ * them and therefore still win, which keeps "select an element and change it"
+ * the most specific action available.
+ */
+export function compileRuleOverrides(overrides: Record<string, StyleMap> | null | undefined): string {
+  if (!overrides) return '';
+
+  return Object.entries(overrides)
+    .filter(([selector, styles]) => selector.trim() && Object.keys(styles ?? {}).length > 0)
+    .map(([selector, styles]) => {
+      const body = declarations(styles);
+      return body ? `${selector} {\n${body}\n}` : '';
+    })
+    .filter(Boolean)
+    .join('\n\n');
+}
+
+/**
+ * Splits a stylesheet into top-level rules for the rule editor.
+ *
+ * A deliberately small scanner rather than a CSS parser: it tracks brace depth
+ * and string state, which is enough to find selectors and their bodies, and it
+ * never has to reproduce the source since edits are stored separately.
+ * At-rules are reported so the panel can show them as read-only context.
+ */
+export interface ParsedRule {
+  selector: string;
+  declarations: StyleMap;
+  /** e.g. "@media (max-width: 600px)" when the rule is nested in one. */
+  context?: string;
+}
+
+export function parseRules(css: string | null | undefined): ParsedRule[] {
+  if (!css) return [];
+
+  const rules: ParsedRule[] = [];
+  const stack: string[] = [];
+  let buffer = '';
+  let depth = 0;
+  let quote: string | null = null;
+
+  const flushBlock = (selector: string, body: string) => {
+    const trimmed = selector.trim();
+    if (!trimmed || trimmed.startsWith('@')) return;
+
+    const map: StyleMap = {};
+    for (const part of body.split(';')) {
+      const index = part.indexOf(':');
+      if (index < 0) continue;
+      const prop = part.slice(0, index).trim();
+      const value = part.slice(index + 1).trim();
+      if (prop && value) map[prop] = value;
+    }
+    if (Object.keys(map).length) {
+      rules.push({ selector: trimmed, declarations: map, context: stack[stack.length - 1] });
+    }
+  };
+
+  for (let i = 0; i < css.length; i += 1) {
+    const char = css[i];
+
+    if (quote) {
+      buffer += char;
+      if (char === quote && css[i - 1] !== '\\') quote = null;
+      continue;
+    }
+    if (char === '"' || char === "'") {
+      quote = char;
+      buffer += char;
+      continue;
+    }
+
+    if (char === '{') {
+      const head = buffer.trim();
+      buffer = '';
+      depth += 1;
+
+      // An at-rule with a block (@media, @supports) wraps rules of its own.
+      if (head.startsWith('@')) {
+        stack.push(head);
+        continue;
+      }
+
+      // Read this block's body, honouring nesting — and quotes, since a
+      // braced string like `content: "}"` would otherwise desync the scan for
+      // the rest of the file.
+      let body = '';
+      let inner = 1;
+      let bodyQuote: string | null = null;
+      i += 1;
+      for (; i < css.length && inner > 0; i += 1) {
+        const current = css[i];
+
+        if (bodyQuote) {
+          if (current === bodyQuote && css[i - 1] !== '\\') bodyQuote = null;
+        } else if (current === '"' || current === "'") {
+          bodyQuote = current;
+        } else if (current === '{') {
+          inner += 1;
+        } else if (current === '}') {
+          inner -= 1;
+          if (inner === 0) break;
+        }
+
+        body += current;
+      }
+      depth -= 1;
+      flushBlock(head, body);
+      continue;
+    }
+
+    if (char === '}') {
+      depth -= 1;
+      if (stack.length && depth < stack.length) stack.pop();
+      buffer = '';
+      continue;
+    }
+
+    buffer += char;
+  }
+
+  return rules;
 }

@@ -2,12 +2,14 @@
 
 import { useState } from 'react';
 
-import type { BuilderNode, Breakpoint, StyleMap } from '@/lib/builder/types';
+import { STATES, type BuilderNode, type Breakpoint, type StyleMap, type StyleState } from '@/lib/builder/types';
 
 interface Props {
   node: BuilderNode;
   breakpoint: Breakpoint;
   onChange: (patch: StyleMap) => void;
+  /** Writes `:hover` / `:focus` declarations instead of the base ones. */
+  onStateChange: (state: StyleState, patch: StyleMap) => void;
 }
 
 type FieldKind = 'text' | 'color' | 'select' | 'box' | 'number';
@@ -80,17 +82,51 @@ const GROUPS: Group[] = [
 
 const BOX_SIDES = ['top', 'right', 'bottom', 'left'] as const;
 
-export default function StyleControls({ node, breakpoint, onChange }: Props) {
+export default function StyleControls({ node, breakpoint, onChange, onStateChange }: Props) {
   const [open, setOpen] = useState<Record<string, boolean>>({ Layout: true, Typography: true });
+  const [state, setState] = useState<'normal' | StyleState>('normal');
 
-  const current = node.styles[breakpoint] ?? {};
-  // Desktop values cascade down, so tablet/mobile show them as placeholders —
-  // an empty field there means "inherit", not "no value".
-  const inherited: StyleMap = breakpoint === 'desktop' ? {} : node.styles.desktop ?? {};
+  const editingState = state !== 'normal';
+
+  const current = editingState ? node.states?.[state] ?? {} : node.styles[breakpoint] ?? {};
+
+  // In a state, the base styles are what you're layering on top of, so they
+  // show as the inherited values. Otherwise desktop cascades into tablet and
+  // mobile — an empty field there means "inherit", not "no value".
+  const inherited: StyleMap = editingState
+    ? { ...node.styles.desktop, ...(breakpoint === 'desktop' ? {} : node.styles[breakpoint]) }
+    : breakpoint === 'desktop'
+      ? {}
+      : node.styles.desktop ?? {};
+
+  const apply = (patch: StyleMap) => (editingState ? onStateChange(state, patch) : onChange(patch));
 
   return (
     <div>
-      {breakpoint !== 'desktop' && (
+      <div className="mb-3 flex rounded-lg bg-[#121216] p-0.5">
+        {(['normal', ...STATES] as const).map((value) => (
+          <button
+            key={value}
+            type="button"
+            onClick={() => setState(value)}
+            aria-pressed={state === value}
+            className={`flex-1 rounded-md py-1 text-[11px] font-medium capitalize transition-colors duration-150 ${
+              state === value ? 'bg-panelRaised text-white' : 'text-muted hover:text-neutral-300'
+            }`}
+          >
+            {value}
+          </button>
+        ))}
+      </div>
+
+      {editingState && (
+        <p className="mb-3 rounded-lg border border-edge bg-panelRaised px-2.5 py-2 text-[11px] leading-relaxed text-muted">
+          Editing <strong className="text-neutral-200">:{state}</strong>. These apply at every
+          width; blank fields fall back to the normal style.
+        </p>
+      )}
+
+      {breakpoint !== 'desktop' && !editingState && (
         <p className="mb-3 rounded-lg border border-accent/25 bg-accent/[0.07] px-2.5 py-2 text-[11px] leading-relaxed text-neutral-300">
           Editing <strong className="font-semibold text-accent">{breakpoint}</strong>. Blank fields
           inherit the desktop value shown in grey.
@@ -131,7 +167,7 @@ export default function StyleControls({ node, breakpoint, onChange }: Props) {
                     field={field}
                     values={current}
                     inherited={inherited}
-                    onChange={onChange}
+                    onChange={apply}
                   />
                 ) : (
                   <StyleField
@@ -139,7 +175,7 @@ export default function StyleControls({ node, breakpoint, onChange }: Props) {
                     field={field}
                     value={current[field.prop] ?? ''}
                     inheritedValue={inherited[field.prop] ?? ''}
-                    onChange={(value) => onChange({ [field.prop]: value })}
+                    onChange={(value) => apply({ [field.prop]: value })}
                   />
                 ),
               )}

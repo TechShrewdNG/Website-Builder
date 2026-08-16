@@ -3,7 +3,7 @@ import { z } from 'zod';
 
 import { currentUserId } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { asJson, emptyTree, starterTree, uniqueSlug } from '@/lib/projects';
+import { asJson, emptyTree, normalisePath, starterTree, uniqueSlug } from '@/lib/projects';
 import { getTemplate } from '@/lib/builder/templates';
 
 const createSchema = z.object({
@@ -15,6 +15,11 @@ const createSchema = z.object({
       title: z.string().optional(),
       css: z.string().optional(),
       externalStylesheets: z.array(z.string()).optional(),
+      /** Extra pages, when a folder or .zip was imported. */
+      pages: z
+        .array(z.object({ title: z.string(), path: z.string(), tree: z.unknown() }))
+        .max(50)
+        .optional(),
     })
     .optional(),
   starter: z.boolean().optional(),
@@ -72,12 +77,16 @@ export async function POST(request: Request) {
         ? { externalStylesheets: imported.externalStylesheets }
         : undefined,
       pages: {
-        create: {
-          title: imported?.title || 'Home',
-          path: '/',
-          sortOrder: 0,
-          tree: asJson(tree),
-        },
+        create: [
+          { title: imported?.title || 'Home', path: '/', sortOrder: 0, tree: asJson(tree) },
+          // A bundle import brings the rest of the template's pages with it.
+          ...(imported?.pages ?? []).map((page, index) => ({
+            title: page.title,
+            path: normalisePath(page.path),
+            sortOrder: index + 1,
+            tree: asJson(page.tree),
+          })),
+        ],
       },
     },
     include: { pages: true },

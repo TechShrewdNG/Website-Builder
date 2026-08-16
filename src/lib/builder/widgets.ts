@@ -19,7 +19,8 @@ export type ControlType =
   | 'url'
   | 'image'
   | 'icon'
-  | 'repeater';
+  | 'repeater'
+  | 'table';
 
 export interface Control {
   key: string;
@@ -253,6 +254,59 @@ export const WIDGETS: Record<WidgetType, WidgetDefinition> = {
     defaultProps: { href: '#', target: '_self' },
     defaultStyles: { display: 'block', 'text-decoration': 'none', color: 'inherit' },
     controls: LINK_CONTROLS,
+  },
+
+  list: {
+    type: 'list',
+    label: 'List',
+    category: 'content',
+    icon: 'text',
+    defaultProps: {
+      ordered: false,
+      // Held as data rather than markup so each row stays individually
+      // editable — which is the whole point of modelling a nav or feature
+      // list instead of keeping it as a raw HTML blob.
+      items: [{ text: 'First item', href: '' }, { text: 'Second item', href: '' }],
+    },
+    defaultStyles: { 'line-height': '1.8' },
+    controls: [
+      { key: 'ordered', label: 'Numbered', type: 'toggle' },
+      {
+        key: 'items',
+        label: 'Items',
+        type: 'repeater',
+        itemDefaults: { text: 'New item', href: '' },
+        fields: [
+          { key: 'text', label: 'Text', type: 'text' },
+          { key: 'href', label: 'Link', type: 'url' },
+        ],
+      },
+    ],
+  },
+  table: {
+    type: 'table',
+    label: 'Table',
+    category: 'content',
+    icon: 'grid',
+    defaultProps: {
+      headerRow: true,
+      // A rectangular array of strings; ragged rows are normalised on render.
+      rows: [
+        ['Plan', 'Price'],
+        ['Standard', '€29'],
+        ['Team', '€79'],
+      ],
+    },
+    defaultStyles: { width: '100%', 'border-collapse': 'collapse' },
+    controls: [
+      { key: 'headerRow', label: 'First row is a header', type: 'toggle' },
+      {
+        key: 'rows',
+        label: 'Rows',
+        type: 'table',
+        help: 'Tab moves between cells. Use the buttons to add or remove rows and columns.',
+      },
+    ],
   },
 
   // ---- dynamic ------------------------------------------------------------
