@@ -46,42 +46,51 @@ export default function AuthForm({ mode }: { mode: 'login' | 'register' }) {
   }
 
   return (
-    <main className="ws-grain relative flex min-h-dvh flex-col justify-center px-6 py-16">
+    <main className="mkt-theme relative flex min-h-dvh flex-col justify-center overflow-hidden py-16" style={{ paddingInline: 'var(--mkt-gutter)' }}>
       <div
+        className="mkt-glow -top-32 left-1/2 h-[420px] w-[680px] -translate-x-1/2 bg-mktPurple/25"
         aria-hidden="true"
-        className="pointer-events-none absolute -top-32 left-1/2 h-[380px] w-[620px] -translate-x-1/2 rounded-full opacity-[0.12] blur-[110px]"
-        style={{ background: 'radial-gradient(circle, #d79b3c 0%, transparent 70%)' }}
       />
 
       <div className="relative z-10 mx-auto w-full max-w-[380px]">
-        <Link href="/" className="mb-8 flex items-center gap-2.5 text-muted transition-colors hover:text-white">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-accentInk">
-            <Icon name="grid" size={17} />
+        <Link href="/" className="mb-9 flex items-center gap-2.5 text-mktTextMuted transition-colors hover:text-mktText">
+          <span className="flex h-8 w-8 items-center justify-center rounded-md bg-mktGold text-mktBg">
+            <Icon name="grid" size={16} />
           </span>
-          <span className="text-[13px] font-semibold text-white">Website Builder</span>
+          <span className="font-head text-[12px] font-bold uppercase tracking-[0.12em] text-mktText">
+            Website Builder
+          </span>
         </Link>
 
-        <h1 className="text-[26px] font-semibold leading-tight tracking-display text-white">
-          {mode === 'login' ? 'Sign in' : 'Create your account'}
+        <h1 className="font-display text-[32px] font-light leading-tight text-mktText">
+          {mode === 'login' ? (
+            'Welcome back.'
+          ) : (
+            <>
+              Build your dream website
+              <br />
+              <em className="italic text-mktGold">yourself.</em>
+            </>
+          )}
         </h1>
-        <p className="mt-2 text-[13px] text-muted">
+        <p className="mt-3 text-[13.5px] leading-relaxed text-mktTextMuted">
           {mode === 'login'
-            ? 'Pick up where you left off.'
-            : 'You only need an email and a password.'}
+            ? 'Sign in to pick up where you left off.'
+            : 'Create a free account. No credit card, no code required.'}
         </p>
 
         <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-4">
           {mode === 'register' && (
             <div>
-              <label className="ws-label" htmlFor="name">
+              <label className="mkt-label" htmlFor="name">
                 Name
               </label>
-              <input id="name" name="name" className="ws-field" autoComplete="name" />
+              <input id="name" name="name" className="mkt-field" autoComplete="name" />
             </div>
           )}
 
           <div>
-            <label className="ws-label" htmlFor="email">
+            <label className="mkt-label" htmlFor="email">
               Email
             </label>
             <input
@@ -89,13 +98,13 @@ export default function AuthForm({ mode }: { mode: 'login' | 'register' }) {
               name="email"
               type="email"
               required
-              className="ws-field"
+              className="mkt-field"
               autoComplete="email"
             />
           </div>
 
           <div>
-            <label className="ws-label" htmlFor="password">
+            <label className="mkt-label" htmlFor="password">
               Password
             </label>
             <input
@@ -104,40 +113,40 @@ export default function AuthForm({ mode }: { mode: 'login' | 'register' }) {
               type="password"
               required
               minLength={8}
-              className="ws-field"
+              className="mkt-field"
               autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
             />
             {mode === 'register' && (
-              <p className="mt-1.5 text-[11px] text-faint">At least 8 characters.</p>
+              <p className="mt-1.5 text-[11px] text-mktTextMuted">At least 8 characters.</p>
             )}
           </div>
 
           {error && (
             <p
               role="alert"
-              className="animate-ws-rise rounded-lg border border-danger/30 bg-danger/10 px-3 py-2.5 text-[13px] leading-relaxed text-danger"
+              className="rounded-md border border-mktDanger/30 bg-mktDanger/10 px-3 py-2.5 text-[13px] leading-relaxed text-mktDanger"
             >
               {error}
             </p>
           )}
 
-          <button type="submit" className="ws-btn-primary mt-1 h-11 text-[15px]" disabled={busy}>
+          <button type="submit" className="mkt-btn-primary mt-1 h-12 text-[13px]" disabled={busy}>
             {busy ? 'Working…' : mode === 'login' ? 'Sign in' : 'Create account'}
           </button>
         </form>
 
-        <p className="mt-7 text-[13px] text-muted">
+        <p className="mt-7 text-[13px] text-mktTextMuted">
           {mode === 'login' ? (
             <>
               No account yet?{' '}
-              <Link href="/register" className="font-medium text-accent underline-offset-2 hover:underline">
+              <Link href="/register" className="font-medium text-mktGold underline-offset-2 hover:underline">
                 Register
               </Link>
             </>
           ) : (
             <>
               Already registered?{' '}
-              <Link href="/login" className="font-medium text-accent underline-offset-2 hover:underline">
+              <Link href="/login" className="font-medium text-mktGold underline-offset-2 hover:underline">
                 Sign in
               </Link>
             </>

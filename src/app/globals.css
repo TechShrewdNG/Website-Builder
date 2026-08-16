@@ -47,6 +47,140 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/**
+ * Marketing theme: the public-facing sell surfaces only (landing, auth).
+ *
+ * A separate token namespace rather than swapping :root, so the dashboard and
+ * editor keep the warm neutral "Studio dark" palette untouched — this is a
+ * distinct visual language for a distinct job (selling, not editing), applied
+ * by wrapping a page's root in `.mkt-theme` rather than by a global switch.
+ */
+.mkt-theme {
+  --mkt-bg: 10 1 20;
+  --mkt-bg-section: 17 2 34;
+  --mkt-purple: 107 33 200;
+  --mkt-purple-glow: 155 93 255;
+  --mkt-gold: 201 168 76;
+  --mkt-gold-light: 232 204 122;
+  --mkt-text: 245 240 255;
+  --mkt-text-muted: 150 140 172;
+  --mkt-cream: 224 213 255;
+  --mkt-border: 107 33 200;
+  --mkt-danger: 224 110 96;
+
+  --mkt-gutter: clamp(1.5rem, 5vw, 5vw);
+  --mkt-section-py: clamp(4rem, 8vw, 7rem);
+
+  background: rgb(var(--mkt-bg));
+  color: rgb(var(--mkt-text));
+  font-family: var(--font-mkt-body), sans-serif;
+}
+
+.mkt-theme .font-display {
+  font-family: var(--font-mkt-display), serif;
+}
+.mkt-theme .font-head {
+  font-family: var(--font-mkt-head), sans-serif;
+}
+
+/* The global :focus-visible rule uses --ws-accent (amber); this keeps
+   keyboard focus visibly on-brand within the marketing pages. */
+.mkt-theme :focus-visible {
+  outline-color: rgb(var(--mkt-gold));
+}
+
+/* The tiny uppercase wide-tracked label above a headline or section. */
+.mkt-eyebrow {
+  font-family: var(--font-mkt-head), sans-serif;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: rgb(var(--mkt-gold));
+}
+
+/* Radial glows behind hero/CTA sections — the source site never uses a flat
+   linear gradient; every accent is a soft off-centre radial. */
+.mkt-glow {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(120px);
+  pointer-events: none;
+}
+
+.mkt-btn-primary {
+  font-family: var(--font-mkt-head), sans-serif;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 3px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgb(var(--mkt-bg));
+  background: rgb(var(--mkt-gold));
+  transition: background-color 150ms, transform 150ms;
+}
+.mkt-btn-primary:hover {
+  background: rgb(var(--mkt-gold-light));
+}
+.mkt-btn-primary:active {
+  transform: translateY(1px);
+}
+
+.mkt-btn-ghost {
+  font-family: var(--font-mkt-head), sans-serif;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 3px;
+  border: 1px solid rgb(var(--mkt-border) / 0.35);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgb(var(--mkt-text));
+  transition: border-color 150ms, background-color 150ms;
+}
+.mkt-btn-ghost:hover {
+  border-color: rgb(var(--mkt-gold) / 0.6);
+  background: rgb(var(--mkt-gold) / 0.06);
+}
+
+.mkt-field {
+  width: 100%;
+  border-radius: 6px;
+  border: 1px solid rgb(var(--mkt-border) / 0.3);
+  background: rgb(var(--mkt-bg-section));
+  padding: 0.6rem 0.8rem;
+  font-size: 14px;
+  color: rgb(var(--mkt-text));
+  transition: border-color 150ms;
+}
+.mkt-field::placeholder {
+  color: rgb(var(--mkt-text-muted) / 0.7);
+}
+.mkt-field:hover {
+  border-color: rgb(var(--mkt-border) / 0.5);
+}
+.mkt-field:focus {
+  outline: none;
+  border-color: rgb(var(--mkt-gold) / 0.7);
+  box-shadow: 0 0 0 2px rgb(var(--mkt-gold) / 0.15);
+}
+
+.mkt-label {
+  display: block;
+  margin-bottom: 0.4rem;
+  font-family: var(--font-mkt-head), sans-serif;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgb(var(--mkt-text-muted));
+}
+
 /* Breaks up the flatness of large dark areas without reading as a pattern. */
 .ws-grain::before {
   content: '';

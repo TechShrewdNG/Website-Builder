@@ -274,6 +274,29 @@ markup.
 `node test/screenshots.mjs <outDir>` captures every surface for reviewing
 design changes.
 
+### The marketing theme
+
+The landing page and auth pages (`/`, `/login`, `/register`) carry a second,
+separate design system — deep purple/near-black, a single gold accent, and a
+three-font pairing (Syne for labels, Cormorant Garamond italic for display
+headlines, Jost for body) via `next/font/google` in `layout.tsx`. It is
+namespaced under a `.mkt-theme` wrapper class with its own `--mkt-*` custom
+properties in `globals.css` and a parallel `mkt*` colour/font set in
+`tailwind.config.ts`, entirely separate from the `--ws-*` tokens the dashboard
+and editor use.
+
+The split is deliberate, not incidental: the dashboard and editor are a dense
+working tool where tabular alignment and quick scanning matter more than
+editorial flair, so they keep the single-sans "Studio dark" system. The
+landing and auth pages exist to sell the product, which is a different job —
+they use the heavier, three-font treatment. Applying one system everywhere
+would either make the tool cluttered with serif italics or make the sales
+pages read as just another SaaS dashboard.
+
+The feature section on the landing page embeds real screenshots of the editor
+(`public/marketing/*.png`) rather than illustrations or icons — evidence that
+the product exists and works, not a mockup of it.
+
 ## Tests
 
 ```bash

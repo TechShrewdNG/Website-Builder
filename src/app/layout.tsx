@@ -1,8 +1,33 @@
 import type { Metadata } from 'next';
 import { GeistMono } from 'geist/font/mono';
 import { GeistSans } from 'geist/font/sans';
+import { Cormorant_Garamond, Jost, Syne } from 'next/font/google';
 
 import './globals.css';
+
+/**
+ * Marketing typefaces, scoped to the public-facing sales surfaces (landing,
+ * auth) via the `.mkt-theme` wrapper in globals.css. The dashboard and editor
+ * keep Geist — a dense, information-heavy tool interface is a different job
+ * than a page trying to sell someone on the product, and an editorial serif
+ * display face would fight the tabular alignment those panels depend on.
+ */
+const mktDisplay = Cormorant_Garamond({
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600'],
+  style: ['normal', 'italic'],
+  variable: '--font-mkt-display',
+});
+const mktHead = Syne({
+  subsets: ['latin'],
+  weight: ['400', '600', '700', '800'],
+  variable: '--font-mkt-head',
+});
+const mktBody = Jost({
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600'],
+  variable: '--font-mkt-body',
+});
 
 export const metadata: Metadata = {
   title: 'Website Builder',
@@ -15,7 +40,10 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`}>
+    <html
+      lang="en"
+      className={`${GeistSans.variable} ${GeistMono.variable} ${mktDisplay.variable} ${mktHead.variable} ${mktBody.variable}`}
+    >
       <body className="font-sans tracking-ui">{children}</body>
     </html>
   );

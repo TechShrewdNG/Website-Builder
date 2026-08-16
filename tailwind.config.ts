@@ -22,6 +22,19 @@ const config: Config = {
         accentInk: 'rgb(var(--ws-accent-ink) / <alpha-value>)',
         danger: 'rgb(var(--ws-danger) / <alpha-value>)',
         positive: 'rgb(var(--ws-positive) / <alpha-value>)',
+
+        // Marketing theme — landing and auth pages only, via `.mkt-theme`.
+        mktBg: 'rgb(var(--mkt-bg) / <alpha-value>)',
+        mktBgSection: 'rgb(var(--mkt-bg-section) / <alpha-value>)',
+        mktPurple: 'rgb(var(--mkt-purple) / <alpha-value>)',
+        mktPurpleGlow: 'rgb(var(--mkt-purple-glow) / <alpha-value>)',
+        mktGold: 'rgb(var(--mkt-gold) / <alpha-value>)',
+        mktGoldLight: 'rgb(var(--mkt-gold-light) / <alpha-value>)',
+        mktText: 'rgb(var(--mkt-text) / <alpha-value>)',
+        mktTextMuted: 'rgb(var(--mkt-text-muted) / <alpha-value>)',
+        mktCream: 'rgb(var(--mkt-cream) / <alpha-value>)',
+        mktBorder: 'rgb(var(--mkt-border) / <alpha-value>)',
+        mktDanger: 'rgb(var(--mkt-danger) / <alpha-value>)',
       },
       fontFamily: {
         sans: ['var(--font-geist-sans)', 'system-ui', 'sans-serif'],
