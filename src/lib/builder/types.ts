@@ -52,6 +52,9 @@ export type WidgetType =
   | 'link'
   | 'list'
   | 'table'
+  | 'quote'
+  | 'video'
+  | 'rating'
   // dynamic
   | 'slider'
   | 'tabs'

@@ -175,6 +175,44 @@ export function renderNode(node: BuilderNode, opts: RenderOptions = {}): string 
       return `${open('table')}${head}<tbody>${bodyRows}</tbody></table>`;
     }
 
+    case 'quote': {
+      const body = `<p>${escapeHtml(node.props.text)}</p>`;
+      const name = String(node.props.name ?? '');
+      const role = String(node.props.role ?? '');
+      const avatarSrc = String(node.props.avatar ?? '');
+      const avatar = avatarSrc ? `<img src="${escapeAttr(avatarSrc)}" alt="" class="ws-quote-avatar">` : '';
+      const attribution =
+        name || role
+          ? `<footer class="ws-quote-attribution">${avatar}<span>${
+              name ? `<span class="ws-quote-name">${escapeHtml(name)}</span>` : ''
+            }${role ? `<span class="ws-quote-role">${escapeHtml(role)}</span>` : ''}</span></footer>`
+          : '';
+      return `${open('blockquote')}${body}${attribution}</blockquote>`;
+    }
+
+    case 'video': {
+      const src = String(node.props.src ?? '');
+      const title = String(node.props.title ?? 'Video');
+      const aspect = String(node.props.aspect ?? '16/9');
+      if (!src) {
+        return `${open('div', { class: 'ws-video ws-video-empty' })}${
+          opts.editor ? 'Add a video URL in the panel on the right.' : ''
+        }</div>`;
+      }
+      const isFile = /\.(mp4|webm|ogg)(\?|$)/i.test(src);
+      const inner = isFile
+        ? `<video src="${escapeAttr(src)}" controls playsinline></video>`
+        : `<iframe src="${escapeAttr(src)}" title="${escapeAttr(title)}" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+      return `${open('div', { class: 'ws-video', style: `--ws-aspect:${aspect};` })}${inner}</div>`;
+    }
+
+    case 'rating': {
+      const max = Math.max(1, Number(node.props.max ?? 5));
+      const value = Math.min(max, Math.max(0, Number(node.props.value ?? 0)));
+      const stars = Array.from({ length: max }, (_, i) => `<span aria-hidden="true">${i < value ? '★' : '☆'}</span>`).join('');
+      return `${open('div', { class: 'ws-rating', role: 'img', 'aria-label': `Rated ${value} out of ${max}` })}${stars}</div>`;
+    }
+
     case 'html':
       return `${open('div')}${String(node.props.html ?? '')}</div>`;
 
@@ -474,4 +512,12 @@ export const WIDGET_CSS = `.ws-slider { position: relative; }
 .ws-accordion-item { border-bottom: 1px solid #e5e7eb; }
 .ws-accordion-trigger { display: flex; width: 100%; justify-content: space-between; align-items: center; gap: 16px; background: transparent; border: 0; padding: 16px 0; font: inherit; font-weight: 600; text-align: left; cursor: pointer; }
 .ws-accordion-panel { padding-bottom: 16px; }
+.ws-quote-attribution { display: flex; align-items: center; gap: 10px; margin-top: 14px; font-style: normal; }
+.ws-quote-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+.ws-quote-name { display: block; font-weight: 600; }
+.ws-quote-role { display: block; font-size: 0.85em; opacity: .7; }
+.ws-video { position: relative; overflow: hidden; aspect-ratio: var(--ws-aspect, 16/9); background: #000; }
+.ws-video iframe, .ws-video video { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; }
+.ws-video-empty { display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 13px; aspect-ratio: 16/9; background: #f3f4f6; }
+.ws-rating { display: inline-flex; gap: 2px; letter-spacing: 2px; }
 `;

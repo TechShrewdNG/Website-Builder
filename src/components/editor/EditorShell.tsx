@@ -12,6 +12,7 @@ import WidgetPalette from './WidgetPalette';
 import type { DragPayload } from './dragState';
 import Icon from '@/components/Icon';
 import { createNode } from '@/lib/builder/widgets';
+import type { BlockDefinition } from '@/lib/builder/blocks';
 import type { ProjectTheme } from '@/lib/builder/theme';
 import {
   createRoot,
@@ -247,6 +248,22 @@ export default function EditorShell({ project: initialProject, pages: initialPag
 
       const node = payload.kind === 'new' ? createNode(payload.widget) : cloneWithNewIds(payload.node);
       commit(insertNode(tree, target.parentId, node, target.index));
+      setSelectedId(node.id);
+    },
+    [tree, commit],
+  );
+
+  /** Inserts a whole block tree at the end of the page, same placement rule as click-to-add. */
+  const handleAddBlock = useCallback(
+    (block: BlockDefinition) => {
+      if (!tree) return;
+      const node = cloneWithNewIds(block.build());
+      const next = insertNode(tree, ROOT_ID, node, tree.children.length);
+      if (next === tree) {
+        setNotice(`${block.name} can't go here.`);
+        return;
+      }
+      commit(next);
       setSelectedId(node.id);
     },
     [tree, commit],
@@ -664,7 +681,7 @@ export default function EditorShell({ project: initialProject, pages: initialPag
           </nav>
 
           <div className="min-h-0 flex-1">
-            {panel === 'widgets' && <WidgetPalette onAdd={handleAdd} />}
+            {panel === 'widgets' && <WidgetPalette onAdd={handleAdd} onAddBlock={handleAddBlock} />}
             {panel === 'layers' && (
               <LayerTree
                 tree={tree}

@@ -78,6 +78,14 @@ const GROUPS: Group[] = [
       { prop: 'opacity', label: 'Opacity', kind: 'text', placeholder: '1' },
     ],
   },
+  {
+    title: 'Transform & motion',
+    fields: [
+      { prop: 'transform', label: 'Transform', kind: 'text', placeholder: 'rotate(2deg) scale(1)' },
+      { prop: 'transition', label: 'Transition', kind: 'text', placeholder: 'all 200ms ease' },
+      { prop: 'cursor', label: 'Cursor', kind: 'select', options: ['', 'default', 'pointer', 'grab', 'text', 'none'] },
+    ],
+  },
 ];
 
 const BOX_SIDES = ['top', 'right', 'bottom', 'left'] as const;

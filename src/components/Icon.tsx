@@ -46,7 +46,10 @@ export type IconName =
   | 'pencil'
   | 'upload'
   | 'check'
-  | 'external';
+  | 'external'
+  | 'quote'
+  | 'video'
+  | 'blocks';
 
 const PATHS: Record<IconName, React.ReactNode> = {
   section: <rect x="3" y="6" width="18" height="12" rx="2" />,
@@ -163,6 +166,28 @@ const PATHS: Record<IconName, React.ReactNode> = {
   upload: <path d="M12 16V4M7.5 8.5 12 4l4.5 4.5M4 20h16" />,
   check: <path d="m5 12.5 4.5 4.5L19 7" />,
   external: <path d="M14 4h6v6M20 4l-8.5 8.5M18 14v5a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 4 19V8a1.5 1.5 0 0 1 1.5-1.5H10" />,
+  quote: (
+    <>
+      <path d="M4.5 8.5A3.5 3.5 0 0 1 8 5v3.2a2.3 2.3 0 0 1-2.3 2.3H5" />
+      <path d="M4.5 10.5v3A2.5 2.5 0 0 0 7 16h.5" />
+      <path d="M13.5 8.5A3.5 3.5 0 0 1 17 5v3.2a2.3 2.3 0 0 1-2.3 2.3H14" />
+      <path d="M13.5 10.5v3a2.5 2.5 0 0 0 2.5 2.5h.5" />
+    </>
+  ),
+  video: (
+    <>
+      <rect x="3" y="5.5" width="14" height="13" rx="2" />
+      <path d="m17 10 4-2.5v9L17 14" />
+    </>
+  ),
+  blocks: (
+    <>
+      <rect x="3" y="3.5" width="8" height="8" rx="1.5" />
+      <rect x="13" y="3.5" width="8" height="8" rx="1.5" />
+      <rect x="3" y="13.5" width="8" height="7" rx="1.5" />
+      <rect x="13" y="13.5" width="8" height="7" rx="1.5" />
+    </>
+  ),
 };
 
 interface Props {

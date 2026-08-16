@@ -22,22 +22,30 @@ export interface TemplateDefinition {
   build: () => { page: BuilderNode; header?: BuilderNode; footer?: BuilderNode };
 }
 
-type Node = BuilderNode;
+export type Node = BuilderNode;
 
-function node(type: Parameters<typeof createNode>[0], props: Record<string, unknown> = {}, styles: StyleMap = {}): Node {
+/**
+ * Shared tree-building helpers.
+ *
+ * Exported for `blocks.ts` too: a template and a block are both "a real
+ * BuilderNode tree built from `createNode`", just inserted at different
+ * points (page creation vs. dropped onto an existing page), so they share
+ * one set of builders rather than drifting into two copies.
+ */
+export function node(type: Parameters<typeof createNode>[0], props: Record<string, unknown> = {}, styles: StyleMap = {}): Node {
   const created = createNode(type);
   created.props = { ...created.props, ...props };
   created.styles.desktop = { ...created.styles.desktop, ...styles };
   return created;
 }
 
-function section(children: Node[], styles: StyleMap = {}, props: Record<string, unknown> = {}): Node {
+export function section(children: Node[], styles: StyleMap = {}, props: Record<string, unknown> = {}): Node {
   const created = node('section', props, styles);
   created.children = children;
   return created;
 }
 
-function columns(count: number, contents: Node[][], styles: StyleMap = {}): Node {
+export function columns(count: number, contents: Node[][], styles: StyleMap = {}): Node {
   const created = node('columns', { count, gap: '28px' }, styles);
   created.children = contents.map((children) => {
     const column = createNode('column');
@@ -47,10 +55,10 @@ function columns(count: number, contents: Node[][], styles: StyleMap = {}): Node
   return created;
 }
 
-const INK = '#151513';
-const MUTED = '#5b5a55';
+export const INK = '#151513';
+export const MUTED = '#5b5a55';
 
-function heading(text: string, level = 'h2', styles: StyleMap = {}): Node {
+export function heading(text: string, level = 'h2', styles: StyleMap = {}): Node {
   return node(
     'heading',
     { text, level },
@@ -66,7 +74,7 @@ function heading(text: string, level = 'h2', styles: StyleMap = {}): Node {
   );
 }
 
-function text(html: string, styles: StyleMap = {}): Node {
+export function text(html: string, styles: StyleMap = {}): Node {
   return node('text', { html }, { 'font-size': '17px', 'line-height': '1.7', color: MUTED, ...styles });
 }
 

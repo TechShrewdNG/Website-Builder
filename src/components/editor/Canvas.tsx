@@ -413,7 +413,7 @@ function resolveDropTarget(
   const draggedType =
     payload.kind === 'new'
       ? payload.widget
-      : payload.kind === 'paste'
+      : payload.kind === 'paste' || payload.kind === 'block'
         ? payload.node.type
         : (findNode(tree, payload.nodeId)?.type ?? null);
   if (!draggedType) return null;

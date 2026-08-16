@@ -234,14 +234,35 @@ restore itself undoable.
 ### Widgets
 
 Layout: section, container, columns. Content: heading, text, image, button,
-icon, divider, spacer, link box, list, table, raw HTML. Dynamic: slider, tabs,
-accordion, counter.
+icon, divider, spacer, link box, list, table, quote, video, rating, raw HTML.
+Dynamic: slider, tabs, accordion, counter.
 
 Dynamic widgets render accessible static markup (roles, `aria-selected`,
 `aria-expanded`) that reads correctly with JS off; a single dependency-free
 runtime (`src/lib/builder/runtime.ts`) progressively enhances it. It ships only
 when a page actually uses one of those widgets, and it's idempotent, because the
 editor re-runs it after every canvas render.
+
+The style panel's "Transform & motion" group (`transform`, `transition`,
+`cursor`) is universal, same as every other style group — it applies to any
+widget, not just a fixed subset.
+
+### Blocks
+
+`src/lib/builder/blocks.ts` holds pre-built sections — hero, feature grid,
+testimonial (single and row), pricing table, CTA banner, FAQ, team grid,
+footer — each a real `BuilderNode` tree built from `createNode`, the same way
+`templates.ts` builds a starting page. The difference is where they land: a
+template seeds a whole new page, a block drops onto a page that already has
+content, from the editor's **Blocks** tab (next to **Elements**, inside the
+Widgets panel).
+
+Dropping a block inserts it at the end of the page and re-IDs every node via
+`cloneWithNewIds`, so nothing in it is special-cased — the heading, buttons
+and columns it's made of are immediately editable, reorderable and deletable
+exactly like anything dragged in from the widget palette. Drag-and-drop
+reuses the same `DragPayload` channel as copy/paste (a `{ kind: 'block',
+node }` payload carrying a whole subtree), rather than a new mechanism.
 
 ### Publishing and export
 

@@ -13,7 +13,8 @@ import type { BuilderNode, WidgetType } from '@/lib/builder/types';
 export type DragPayload =
   | { kind: 'new'; widget: WidgetType }
   | { kind: 'move'; nodeId: string }
-  | { kind: 'paste'; node: BuilderNode };
+  | { kind: 'paste'; node: BuilderNode }
+  | { kind: 'block'; node: BuilderNode };
 
 let current: DragPayload | null = null;
 

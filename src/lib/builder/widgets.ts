@@ -309,6 +309,66 @@ export const WIDGETS: Record<WidgetType, WidgetDefinition> = {
     ],
   },
 
+  quote: {
+    type: 'quote',
+    label: 'Quote',
+    category: 'content',
+    icon: 'quote',
+    defaultProps: {
+      text: 'This made it so much easier to get our site live. It just works.',
+      name: 'Jordan Blake',
+      role: 'Founder, Studio Nine',
+      avatar: '',
+    },
+    defaultStyles: { 'font-size': '19px', 'line-height': '1.6' },
+    controls: [
+      { key: 'text', label: 'Quote', type: 'textarea' },
+      { key: 'name', label: 'Name', type: 'text' },
+      { key: 'role', label: 'Role or company', type: 'text' },
+      { key: 'avatar', label: 'Avatar', type: 'image' },
+    ],
+  },
+  video: {
+    type: 'video',
+    label: 'Video',
+    category: 'content',
+    icon: 'video',
+    defaultProps: { src: '', title: 'Video', aspect: '16/9' },
+    controls: [
+      {
+        key: 'src',
+        label: 'Embed URL',
+        type: 'url',
+        placeholder: 'https://www.youtube.com/embed/...',
+        help: 'A YouTube or Vimeo embed URL, or a direct link to an .mp4 file.',
+      },
+      { key: 'title', label: 'Accessible title', type: 'text' },
+      {
+        key: 'aspect',
+        label: 'Aspect ratio',
+        type: 'select',
+        options: [
+          { label: '16:9', value: '16/9' },
+          { label: '4:3', value: '4/3' },
+          { label: '1:1', value: '1/1' },
+          { label: '21:9', value: '21/9' },
+        ],
+      },
+    ],
+  },
+  rating: {
+    type: 'rating',
+    label: 'Rating',
+    category: 'content',
+    icon: 'star',
+    defaultProps: { value: 5, max: 5 },
+    defaultStyles: { 'font-size': '22px', color: '#f0a93a' },
+    controls: [
+      { key: 'value', label: 'Filled stars', type: 'number' },
+      { key: 'max', label: 'Out of', type: 'number' },
+    ],
+  },
+
   // ---- dynamic ------------------------------------------------------------
   slider: {
     type: 'slider',
