@@ -5,8 +5,6 @@ import { useRouter } from 'next/navigation';
 import { signIn } from 'next-auth/react';
 import Link from 'next/link';
 
-import Icon from '@/components/Icon';
-
 export default function AuthForm({ mode }: { mode: 'login' | 'register' }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -53,13 +51,8 @@ export default function AuthForm({ mode }: { mode: 'login' | 'register' }) {
       />
 
       <div className="relative z-10 mx-auto w-full max-w-[380px]">
-        <Link href="/" className="mb-9 flex items-center gap-2.5 text-mktTextMuted transition-colors hover:text-mktText">
-          <span className="flex h-8 w-8 items-center justify-center rounded-md bg-mktGold text-mktBg">
-            <Icon name="grid" size={16} />
-          </span>
-          <span className="font-head text-[12px] font-bold uppercase tracking-[0.12em] text-mktText">
-            Website Builder
-          </span>
+        <Link href="/" className="mkt-logo mb-9 inline-block text-[1.15rem]">
+          Website Builder<span>.</span>
         </Link>
 
         <h1 className="font-display text-[32px] font-light leading-tight text-mktText">

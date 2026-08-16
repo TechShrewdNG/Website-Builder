@@ -89,6 +89,19 @@ body {
   outline-color: rgb(var(--mkt-gold));
 }
 
+/* Wordmark lockup, matching the reference site's nav/footer logo: bold head
+   font, tight tracking, no icon mark — just text with a gold accent dot. */
+.mkt-logo {
+  font-family: var(--font-mkt-head), sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: rgb(var(--mkt-text));
+  text-decoration: none;
+}
+.mkt-logo span {
+  color: rgb(var(--mkt-gold));
+}
+
 /* The tiny uppercase wide-tracked label above a headline or section. */
 .mkt-eyebrow {
   font-family: var(--font-mkt-head), sans-serif;

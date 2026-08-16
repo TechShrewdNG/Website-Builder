@@ -23,7 +23,7 @@ const FEATURES: {
         Bring in <em className="italic text-mktGold">any</em> site you already have.
       </>
     ),
-    body: 'Upload a single HTML file, a folder, or a .zip of a template. Every class and stylesheet rule is preserved, local images and linked CSS are resolved automatically, and the whole thing becomes something you can click and drag — without redesigning it first.',
+    body: 'Upload a single HTML file, a folder, or a .zip of a template. Every class and stylesheet rule stays exactly as it was. Local images and linked CSS get resolved on their own, and the whole thing turns into something you can click and drag, no redesign required.',
     icon: 'upload',
     image: '/marketing/import.png',
     imageAlt: 'The dashboard import panel, with options for an HTML file, a folder, or a .zip archive',
@@ -35,7 +35,7 @@ const FEATURES: {
         Or start with <em className="italic text-mktGold">nothing</em> and build up.
       </>
     ),
-    body: 'Sections, columns, headings, images, lists, tables, sliders, tabs, accordions — drop them onto the canvas and arrange them by hand. Every widget ships real, accessible markup, not a black box you can never quite adjust.',
+    body: 'Sections, columns, headings, images, lists, tables, sliders, tabs, accordions. Drop them onto the canvas and arrange them by hand. Every widget ships real, accessible markup, code you can actually read and adjust.',
     icon: 'grid',
     image: '/marketing/build.png',
     imageAlt: 'The editor showing the widget palette on the left and a page under construction on the canvas',
@@ -47,7 +47,7 @@ const FEATURES: {
         Style <em className="italic text-mktGold">one</em> element, or every element like it.
       </>
     ),
-    body: 'Adjust a single element on its own, or open the rule editor and change every button on the site at once. Hover and focus states, per-breakpoint layout, and design tokens pulled straight from your palette — no stylesheet required.',
+    body: 'Adjust a single element on its own, or open the rule editor and change every button on the site at once. Hover and focus states, per-breakpoint layout, and design tokens pulled straight from your palette. No separate stylesheet required.',
     icon: 'code',
     image: '/marketing/style.png',
     imageAlt: 'The style panel for a selected heading, with normal, hover, and focus states and layout controls',
@@ -59,7 +59,7 @@ const FEATURES: {
         Ship a link, or take the <em className="italic text-mktGold">code</em> with you.
       </>
     ),
-    body: 'Publish instantly to a shareable URL with SEO, a sitemap, and social cards built in. Or export plain HTML, CSS, and images that run on any host, for as long as you want — nothing to keep paying for just to stay online.',
+    body: 'Publish instantly to a shareable URL with SEO, a sitemap, and social cards built in. Or export plain HTML, CSS, and images that run on any host for as long as you want. Nothing to keep paying for just to stay online.',
     icon: 'download',
     image: '/marketing/publish.png',
     imageAlt: 'A page published live at its own URL',
@@ -73,11 +73,11 @@ const DIFFERENTIATORS = [
   },
   {
     title: 'Real code, not a black box',
-    body: 'Every widget renders semantic HTML. Turn off JavaScript and sliders, tabs, and accordions still read correctly.',
+    body: 'Every widget renders semantic HTML. Turn off JavaScript, and sliders, tabs, and accordions still read correctly.',
   },
   {
     title: 'Your stylesheet stays yours',
-    body: "Import a template and its original CSS is left untouched. Your edits layer on top, and any of them can be undone.",
+    body: 'Import a template and its original CSS is left untouched. Your edits sit on top of it, and you can undo any of them.',
   },
 ];
 
@@ -85,7 +85,7 @@ const STEPS = [
   {
     number: '01',
     title: 'Import or start blank',
-    body: 'Bring a template in — file, folder, or .zip — or open an empty page and build from nothing.',
+    body: 'Bring in a template as a file, a folder, or a .zip. Or open an empty page and build from nothing.',
   },
   {
     number: '02',
@@ -127,12 +127,9 @@ function Nav({ session }: { session: Session | null }) {
         className="mx-auto flex max-w-6xl items-center gap-3"
         style={{ paddingInline: 'var(--mkt-gutter)', paddingBlock: '1.1rem' }}
       >
-        <span className="flex h-8 w-8 items-center justify-center rounded-md bg-mktGold text-mktBg">
-          <Icon name="grid" size={16} />
-        </span>
-        <span className="font-head text-[13px] font-bold uppercase tracking-[0.12em] text-mktText">
-          Website Builder
-        </span>
+        <Link href="/" className="mkt-logo text-[1.3rem]">
+          Website Builder<span>.</span>
+        </Link>
 
         <nav className="ml-auto flex items-center gap-2">
           {session?.user ? (
@@ -188,7 +185,7 @@ function Hero({ session }: { session: Session | null }) {
 
         <p className="mx-auto mt-7 max-w-xl text-pretty text-[16px] leading-relaxed text-mktTextMuted">
           Import a template you already have, or start from a blank page. Drag sections into
-          place, tune every style down to a single element, then publish — or export the same
+          place, tune every style down to a single element, then publish, or export the same
           clean HTML and CSS you saw in the editor.
         </p>
 
@@ -200,7 +197,7 @@ function Hero({ session }: { session: Session | null }) {
           ) : (
             <>
               <Link href="/register" className="mkt-btn-primary h-12 px-6 text-[13px]">
-                Start building — free
+                Start building, free
               </Link>
               <Link href="/login" className="mkt-btn-ghost h-12 px-6 text-[13px]">
                 Sign in
@@ -259,7 +256,7 @@ function FeatureList() {
                 >
                   {/* object-contain, not object-cover: these are screenshots of
                       the real product, at whatever aspect ratio they were
-                      captured — cropping one at random risks cutting off the
+                      captured. Cropping one at random risks cutting off the
                       exact detail the section is illustrating. */}
                   <Image
                     src={feature.image}
@@ -354,7 +351,7 @@ function FinalCta({ session }: { session: Session | null }) {
           <em className="italic text-mktGold">Built by you.</em>
         </h2>
         <p className="mx-auto mt-5 max-w-sm text-pretty text-[14.5px] leading-relaxed text-mktTextMuted">
-          No credit card. No code required. Just drag, drop, and publish.
+          No credit card, no code required, just drag, drop, and publish.
         </p>
         <Link href="/register" className="mkt-btn-primary mt-8 inline-flex h-12 px-6 text-[13px]">
           Create your account
@@ -371,7 +368,9 @@ function Footer() {
         className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-5 gap-y-2 text-[12px] text-mktTextMuted"
         style={{ paddingInline: 'var(--mkt-gutter)', paddingBlock: '1.75rem' }}
       >
-        <span className="font-head font-bold uppercase tracking-[0.1em]">Website Builder</span>
+        <span className="mkt-logo text-[13px]">
+          Website Builder<span>.</span>
+        </span>
         <span aria-hidden="true">·</span>
         <span>
           Published sites live at <code className="text-mktCream">/s/&lt;slug&gt;</code>
