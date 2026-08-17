@@ -17,6 +17,78 @@ import { importHtml, type ImportResult } from './importer';
 import { flatten } from './tree';
 import type { BuilderNode } from './types';
 
+export interface ExtractedAsset {
+  /** Stands in for the data URL in the tree until the asset is uploaded. */
+  placeholder: string;
+  dataUrl: string;
+  filename: string;
+  mimeType: string;
+}
+
+/**
+ * Pulls inlined images back out of imported trees, replacing each with a
+ * small placeholder string.
+ *
+ * `importBundle` inlines every local image as a data URL so the tree is
+ * immediately previewable — right for a single page, wrong for a template
+ * with dozens of full-size photos, where the combined tree can run to tens
+ * of megabytes and blow past a single request's size limit. Call `extract`
+ * on every page built from the same bundle (sharing one instance dedupes a
+ * logo or icon repeated across pages into one upload), create the project
+ * with the now-small trees, upload each returned asset individually, then
+ * `applyAssetResolution` to swap the placeholders for the real, hosted URLs.
+ */
+export function createAssetExtractor() {
+  const assets: ExtractedAsset[] = [];
+  const byDataUrl = new Map<string, string>();
+  let counter = 0;
+
+  function placeholderFor(dataUrl: string): string {
+    const existing = byDataUrl.get(dataUrl);
+    if (existing) return existing;
+
+    const placeholder = `asset-pending://${counter++}`;
+    byDataUrl.set(dataUrl, placeholder);
+    const mimeType = /^data:([^;,]+)/.exec(dataUrl)?.[1] ?? 'application/octet-stream';
+    const extension = mimeType === 'image/svg+xml' ? 'svg' : (mimeType.split('/')[1] ?? 'png').replace('jpeg', 'jpg');
+    assets.push({ placeholder, dataUrl, filename: `image-${assets.length + 1}.${extension}`, mimeType });
+    return placeholder;
+  }
+
+  function extract(root: BuilderNode): void {
+    for (const node of flatten(root)) {
+      if (node.type === 'image' && typeof node.props.src === 'string' && node.props.src.startsWith('data:')) {
+        node.props.src = placeholderFor(node.props.src);
+      }
+      if (node.type === 'slider' && Array.isArray(node.props.slides)) {
+        node.props.slides = (node.props.slides as { image?: string }[]).map((slide) =>
+          typeof slide.image === 'string' && slide.image.startsWith('data:')
+            ? { ...slide, image: placeholderFor(slide.image) }
+            : slide,
+        );
+      }
+    }
+  }
+
+  return { extract, get assets(): ExtractedAsset[] { return assets; } };
+}
+
+/** Swaps extracted placeholders for the real URLs once their assets are uploaded. */
+export function applyAssetResolution(root: BuilderNode, resolved: Map<string, string>): void {
+  for (const node of flatten(root)) {
+    if (node.type === 'image' && typeof node.props.src === 'string' && resolved.has(node.props.src)) {
+      node.props.src = resolved.get(node.props.src);
+    }
+    if (node.type === 'slider' && Array.isArray(node.props.slides)) {
+      node.props.slides = (node.props.slides as { image?: string }[]).map((slide) =>
+        typeof slide.image === 'string' && resolved.has(slide.image)
+          ? { ...slide, image: resolved.get(slide.image) }
+          : slide,
+      );
+    }
+  }
+}
+
 export interface BundleFile {
   /** Path relative to the bundle root, e.g. "css/theme.css". */
   path: string;

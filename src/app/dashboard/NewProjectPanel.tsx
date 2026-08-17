@@ -4,7 +4,15 @@ import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { importHtml, type ImportResult } from '@/lib/builder/importer';
-import { importBundle, unzip, type BundleResult, type BundleFile } from '@/lib/builder/bundle';
+import {
+  importBundle,
+  unzip,
+  createAssetExtractor,
+  applyAssetResolution,
+  type BundleResult,
+  type BundleFile,
+  type ExtractedAsset,
+} from '@/lib/builder/bundle';
 import Icon from '@/components/Icon';
 
 /**
@@ -19,11 +27,107 @@ export default function NewProjectPanel() {
 
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState<{ result: ImportResult; filename: string } | null>(null);
   const [bundle, setBundle] = useState<{ result: BundleResult; label: string } | null>(null);
   const folderInput = useRef<HTMLInputElement>(null);
   const zipInput = useRef<HTMLInputElement>(null);
+
+  /**
+   * A template's worth of full-size photos, inlined as data URLs and sent as
+   * one JSON body, can run to tens of megabytes — comfortably past what a
+   * single request should carry, and past what some hosts allow at all. So a
+   * bundle is created in three small steps instead: the trees go up with
+   * placeholders standing in for each image, then every image uploads on its
+   * own through the existing (already size-checked) asset endpoint, then each
+   * page is patched with the placeholders swapped for the uploaded URLs.
+   */
+  async function createFromBundle() {
+    if (!bundle) return;
+    setBusy(true);
+    setError(null);
+
+    try {
+      const [home, ...rest] = bundle.result.pages;
+      const extractor = createAssetExtractor();
+      extractor.extract(home.root);
+      rest.forEach((page) => extractor.extract(page.root));
+
+      const response = await fetch('/api/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: name.trim(),
+          imported: {
+            tree: home.root,
+            title: home.title,
+            css: bundle.result.css,
+            externalStylesheets: bundle.result.externalStylesheets,
+            pages: rest.map((page) => ({ title: page.title, path: page.path, tree: page.root })),
+          },
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error ?? 'Could not create the project');
+
+      const project = payload.project as { id: string; pages: { id: string; path: string; tree: unknown }[] };
+      const assets: ExtractedAsset[] = extractor.assets;
+
+      if (assets.length) {
+        const resolved = new Map<string, string>();
+        let uploaded = 0;
+        let failed = 0;
+
+        // Sequential rather than Promise.all: a hundred-plus concurrent
+        // multipart uploads is its own way to overwhelm a request, and this
+        // only has to be fast enough not to feel stuck, not instant.
+        for (const asset of assets) {
+          setProgress(`Uploading images… ${uploaded + failed + 1}/${assets.length}`);
+          try {
+            const blob = await (await fetch(asset.dataUrl)).blob();
+            const form = new FormData();
+            form.append('projectId', project.id);
+            form.append('file', new File([blob], asset.filename, { type: asset.mimeType }));
+
+            const uploadRes = await fetch('/api/assets', { method: 'POST', body: form });
+            const uploadPayload = await uploadRes.json().catch(() => ({}));
+            if (!uploadRes.ok) throw new Error(uploadPayload.error ?? 'Upload failed');
+
+            resolved.set(asset.placeholder, uploadPayload.asset.data);
+            uploaded += 1;
+          } catch {
+            failed += 1;
+          }
+        }
+
+        setProgress('Saving pages…');
+        for (const page of project.pages) {
+          const tree = page.tree as Parameters<typeof applyAssetResolution>[0];
+          applyAssetResolution(tree, resolved);
+          await fetch(`/api/pages/${page.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tree }),
+          });
+        }
+
+        if (failed) {
+          setError(
+            `Created the site, but ${failed} of ${assets.length} image${assets.length === 1 ? '' : 's'} were too large to upload (2 MB limit) and were left blank. Replace them from the Media panel.`,
+          );
+          // The site exists and is usable; surface the shortfall but still open it.
+        }
+      }
+
+      router.push(`/editor/${project.id}`);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Something went wrong');
+    } finally {
+      setBusy(false);
+      setProgress(null);
+    }
+  }
 
   async function create(body: Record<string, unknown>) {
     setBusy(true);
@@ -106,19 +210,6 @@ export default function NewProjectPanel() {
   }
 
   function buildPayload(): Record<string, unknown> {
-    if (bundle) {
-      const [home, ...rest] = bundle.result.pages;
-      return {
-        name: name.trim(),
-        imported: {
-          tree: home.root,
-          title: home.title,
-          css: bundle.result.css,
-          externalStylesheets: bundle.result.externalStylesheets,
-          pages: rest.map((page) => ({ title: page.title, path: page.path, tree: page.root })),
-        },
-      };
-    }
     if (pending) {
       return {
         name: name.trim(),
@@ -162,11 +253,11 @@ export default function NewProjectPanel() {
               type="button"
               className="ws-btn-primary h-[38px]"
               disabled={busy || !name.trim()}
-              onClick={() => create(buildPayload())}
+              onClick={() => (bundle ? createFromBundle() : create(buildPayload()))}
             >
               <Icon name="plus" size={15} />
               {busy
-                ? 'Creating…'
+                ? (progress ?? 'Creating…')
                 : bundle
                   ? `Create ${bundle.result.pages.length}-page site`
                   : pending
