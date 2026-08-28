@@ -16,6 +16,32 @@ import {
 import Icon from '@/components/Icon';
 
 /**
+ * Retries a fetch on transient failures (5xx, or the request never reaching
+ * the server at all) with a short exponential backoff. A single bundle
+ * import can mean 100+ sequential requests in a row — enough that even a
+ * fraction-of-a-percent transient failure rate (momentary platform
+ * throttling, a dropped connection) will hit *something* most of the time
+ * if nothing retries. A 4xx is not retried: that's the server correctly
+ * rejecting the request, and trying again would just get the same answer.
+ */
+async function fetchWithRetry(input: RequestInfo, init: RequestInit, attempts = 4): Promise<Response> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      const response = await fetch(input, init);
+      if (response.ok || (response.status >= 400 && response.status < 500)) return response;
+      lastError = new Error(`Server error (${response.status})`);
+    } catch (cause) {
+      lastError = cause;
+    }
+    if (attempt < attempts - 1) {
+      await new Promise((resolve) => setTimeout(resolve, 300 * 2 ** attempt));
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error('Request failed');
+}
+
+/**
  * Project creation, including import.
  *
  * Import parses the HTML here in the browser with DOMParser, so the server
@@ -90,7 +116,7 @@ export default function NewProjectPanel() {
             form.append('projectId', project.id);
             form.append('file', new File([blob], asset.filename, { type: asset.mimeType }));
 
-            const uploadRes = await fetch('/api/assets', { method: 'POST', body: form });
+            const uploadRes = await fetchWithRetry('/api/assets', { method: 'POST', body: form });
             const uploadPayload: any = await uploadRes.json().catch(() => ({}));
             if (!uploadRes.ok) throw new Error(uploadPayload.error ?? 'Upload failed');
 
@@ -102,20 +128,35 @@ export default function NewProjectPanel() {
         }
 
         setProgress('Saving pages…');
+        let pagesFailed = 0;
         for (const page of project.pages) {
           const tree = page.tree as Parameters<typeof applyAssetResolution>[0];
           applyAssetResolution(tree, resolved);
-          await fetch(`/api/pages/${page.id}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tree }),
-          });
+          try {
+            const patchRes = await fetchWithRetry(`/api/pages/${page.id}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ tree }),
+            });
+            if (!patchRes.ok) throw new Error(`Save failed (${patchRes.status})`);
+          } catch {
+            pagesFailed += 1;
+          }
         }
 
-        if (failed) {
-          setError(
-            `Created the site, but ${failed} of ${assets.length} image${assets.length === 1 ? '' : 's'} were too large to upload (2 MB limit) and were left blank. Replace them from the Media panel.`,
-          );
+        if (failed || pagesFailed) {
+          const parts: string[] = [];
+          if (failed) {
+            parts.push(
+              `${failed} of ${assets.length} image${assets.length === 1 ? '' : 's'} couldn't be uploaded (over the 1.4 MB limit, or a persistent connection problem) and were left blank`,
+            );
+          }
+          if (pagesFailed) {
+            parts.push(
+              `${pagesFailed} page${pagesFailed === 1 ? '' : 's'} couldn't be saved and may still show placeholder images`,
+            );
+          }
+          setError(`Created the site, but ${parts.join('; ')}. Try re-uploading the affected images from the Media panel.`);
           // The site exists and is usable; surface the shortfall but still open it.
         }
       }
