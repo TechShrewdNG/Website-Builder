@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 
-import { prisma } from '@/lib/db';
+import { getPrisma } from '@/lib/db';
 import { toResponse } from '@/lib/http';
 
 const schema = z.object({
@@ -23,6 +23,7 @@ export async function POST(request: Request) {
   // host — escapes as a bare 500 with an empty body, and the sign-up form can
   // only say "could not create the account".
   try {
+    const prisma = getPrisma();
     const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
     if (existing) {
       return NextResponse.json({ error: 'An account with that email already exists' }, { status: 409 });

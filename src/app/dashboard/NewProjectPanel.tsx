@@ -68,7 +68,7 @@ export default function NewProjectPanel() {
           },
         }),
       });
-      const payload = await response.json().catch(() => ({}));
+      const payload: any = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error ?? 'Could not create the project');
 
       const project = payload.project as { id: string; pages: { id: string; path: string; tree: unknown }[] };
@@ -91,7 +91,7 @@ export default function NewProjectPanel() {
             form.append('file', new File([blob], asset.filename, { type: asset.mimeType }));
 
             const uploadRes = await fetch('/api/assets', { method: 'POST', body: form });
-            const uploadPayload = await uploadRes.json().catch(() => ({}));
+            const uploadPayload: any = await uploadRes.json().catch(() => ({}));
             if (!uploadRes.ok) throw new Error(uploadPayload.error ?? 'Upload failed');
 
             resolved.set(asset.placeholder, uploadPayload.asset.data);
@@ -138,7 +138,7 @@ export default function NewProjectPanel() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-      const payload = await response.json().catch(() => ({}));
+      const payload: any = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error ?? 'Could not create the project');
 
       router.push(`/editor/${payload.project.id}`);

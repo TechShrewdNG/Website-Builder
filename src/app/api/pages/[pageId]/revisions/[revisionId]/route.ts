@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
 import { currentUserId } from '@/lib/auth';
-import { prisma } from '@/lib/db';
+import { getPrisma } from '@/lib/db';
 import { asJson, requirePage } from '@/lib/projects';
 import { toResponse, unauthorized } from '@/lib/http';
 
@@ -20,6 +20,7 @@ export async function POST(_request: Request, { params }: Params) {
   try {
     const { pageId, revisionId } = await params;
     const page = await requirePage(pageId, userId);
+    const prisma = getPrisma();
 
     const revision = await prisma.pageRevision.findFirst({ where: { id: revisionId, pageId } });
     if (!revision) return NextResponse.json({ error: 'Revision not found' }, { status: 404 });
@@ -44,7 +45,7 @@ export async function DELETE(_request: Request, { params }: Params) {
   try {
     const { pageId, revisionId } = await params;
     await requirePage(pageId, userId);
-    await prisma.pageRevision.deleteMany({ where: { id: revisionId, pageId } });
+    await getPrisma().pageRevision.deleteMany({ where: { id: revisionId, pageId } });
     return NextResponse.json({ ok: true });
   } catch (error) {
     return toResponse(error);

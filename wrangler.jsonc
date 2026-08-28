@@ -1,0 +1,25 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  // Deployed under its own name rather than the account's existing
+  // "qlevr-technologies" Worker, so this never overwrites whatever that one
+  // currently serves.
+  "name": "qlevr-canvas",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-08-28",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "observability": {
+    "enabled": true
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "qlevr-canvas-db",
+      "database_id": "aec0db78-bddf-4d1d-bfd9-172eb4ebc7c4",
+      "migrations_dir": "migrations"
+    }
+  ]
+}

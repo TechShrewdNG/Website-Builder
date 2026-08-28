@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
 import { auth, signOut } from '@/lib/auth';
-import { prisma } from '@/lib/db';
+import { getPrisma } from '@/lib/db';
 import Icon from '@/components/Icon';
 import NewProjectPanel from './NewProjectPanel';
 import ProjectRow from './ProjectRow';
@@ -13,6 +13,7 @@ export default async function DashboardPage() {
   const session = await auth();
   if (!session?.user) redirect('/login');
 
+  const prisma = getPrisma();
   const projects = await prisma.project.findMany({
     where: { ownerId: session.user.id },
     orderBy: { updatedAt: 'desc' },

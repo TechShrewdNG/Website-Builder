@@ -53,7 +53,7 @@ export default function SitePanel({ project, page, onProjectChange, onPageChange
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(patch),
     });
-    const payload = await response.json().catch(() => ({}));
+    const payload: any = await response.json().catch(() => ({}));
     if (!response.ok) {
       flash(payload.error ?? 'Could not save', 3000);
       return;
@@ -312,7 +312,7 @@ function MediaLibrary({ projectId }: { projectId: string }) {
   const load = useCallback(async () => {
     const response = await fetch(`/api/assets?projectId=${projectId}`);
     if (!response.ok) return;
-    const payload = await response.json();
+    const payload: any = await response.json();
     setAssets(payload.assets ?? []);
   }, [projectId]);
 

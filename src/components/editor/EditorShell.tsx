@@ -458,7 +458,7 @@ export default function EditorShell({ project: initialProject, pages: initialPag
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ title, path, templateId }),
     });
-    const payload = await response.json().catch(() => ({}));
+    const payload: any = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(payload.error ?? 'Could not add the page');
 
     setPages((prev) => [...prev, { ...payload.page, tree: payload.page.tree as BuilderNode }]);
@@ -470,7 +470,7 @@ export default function EditorShell({ project: initialProject, pages: initialPag
   async function deletePage(id: string) {
     const response = await fetch(`/api/pages/${id}`, { method: 'DELETE' });
     if (!response.ok) {
-      const payload = await response.json().catch(() => ({}));
+      const payload: any = await response.json().catch(() => ({}));
       setNotice(payload.error ?? 'Could not delete the page');
       return;
     }
@@ -507,7 +507,7 @@ export default function EditorShell({ project: initialProject, pages: initialPag
         setNotice('Could not restore that snapshot');
         return;
       }
-      const payload = await response.json();
+      const payload: any = await response.json();
       const restored = payload.page.tree as BuilderNode;
 
       setPages((prev) => prev.map((page) => (page.id === pageId ? { ...page, tree: restored } : page)));
@@ -558,7 +558,7 @@ export default function EditorShell({ project: initialProject, pages: initialPag
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ published: !project.published }),
       });
-      const payload = await response.json().catch(() => ({}));
+      const payload: any = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error ?? 'Publish failed');
 
       setProject((prev) => ({ ...prev, published: payload.published }));

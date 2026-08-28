@@ -2,17 +2,20 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { currentUserId } from '@/lib/auth';
-import { prisma } from '@/lib/db';
+import { getPrisma } from '@/lib/db';
 import { Prisma } from '@prisma/client';
 
 import { asJson, requireProject } from '@/lib/projects';
 import { toResponse, unauthorized } from '@/lib/http';
 
+// These, plus theme and the rest of the row's smaller columns, all have to
+// fit together under D1's 2,000,000-byte row cap — so each cap here leaves
+// headroom for the others rather than each independently maxing out at 2MB.
 const patchSchema = z.object({
   name: z.string().trim().min(1).max(80).optional(),
-  customCss: z.string().max(500_000).optional(),
-  importedCss: z.string().max(2_000_000).optional(),
-  faviconData: z.string().max(200_000).nullable().optional(),
+  customCss: z.string().max(400_000).optional(),
+  importedCss: z.string().max(1_400_000).optional(),
+  faviconData: z.string().max(100_000).nullable().optional(),
   siteUrl: z.string().max(300).optional(),
   // `null` clears a global section; omitting it leaves the slot untouched.
   headerTree: z.unknown().optional(),
@@ -52,7 +55,7 @@ export async function PATCH(request: Request, { params }: Params) {
     await requireProject(id, userId);
 
     const { headerTree, footerTree, siteUrl, theme, ...rest } = parsed.data;
-    const project = await prisma.project.update({
+    const project = await getPrisma().project.update({
       where: { id },
       data: {
         ...rest,
@@ -76,7 +79,7 @@ export async function DELETE(_request: Request, { params }: Params) {
   try {
     const { id } = await params;
     await requireProject(id, userId);
-    await prisma.project.delete({ where: { id } });
+    await getPrisma().project.delete({ where: { id } });
     return NextResponse.json({ ok: true });
   } catch (error) {
     return toResponse(error);

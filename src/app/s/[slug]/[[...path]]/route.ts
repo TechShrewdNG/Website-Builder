@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/db';
+import { getPrisma } from '@/lib/db';
 import { normalisePath } from '@/lib/projects';
 import { composePage, renderDocument } from '@/lib/builder/render';
 import { readTheme } from '@/lib/builder/theme';
@@ -21,7 +21,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ slug
   const segments = path ?? [];
   const pagePath = normalisePath(`/${segments.join('/')}`);
 
-  const project = await prisma.project.findFirst({
+  const project = await getPrisma().project.findFirst({
     where: { slug, published: true },
     include: { pages: true },
   });

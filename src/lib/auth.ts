@@ -1,10 +1,9 @@
 import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
-import { PrismaAdapter } from '@auth/prisma-adapter';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 
-import { prisma } from './db';
+import { getPrisma } from './db';
 
 export const credentialsSchema = z.object({
   email: z.string().email(),
@@ -12,7 +11,13 @@ export const credentialsSchema = z.object({
 });
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  adapter: PrismaAdapter(prisma),
+  // No adapter: sessions are JWTs and the only provider is Credentials, whose
+  // authorize() below does its own lookup — Auth.js never routes a
+  // Credentials sign-in through the adapter regardless. That matters here
+  // beyond being unused weight: the D1 binding this app's Prisma client now
+  // needs (see db.ts) only exists once a request is being handled, so an
+  // adapter built from it couldn't be constructed at this module's load time
+  // in a Worker anyway.
   // Self-hosted behind a proxy (Vercel, Docker, nginx), the Host header is what
   // identifies the deployment; without this Auth.js rejects every callback.
   trustHost: true,
@@ -30,7 +35,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const parsed = credentialsSchema.safeParse(raw);
         if (!parsed.success) return null;
 
-        const user = await prisma.user.findUnique({ where: { email: parsed.data.email } });
+        const user = await getPrisma().user.findUnique({ where: { email: parsed.data.email } });
         if (!user?.passwordHash) return null;
 
         const valid = await bcrypt.compare(parsed.data.password, user.passwordHash);

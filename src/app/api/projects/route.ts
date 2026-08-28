@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { currentUserId } from '@/lib/auth';
-import { prisma } from '@/lib/db';
+import { getPrisma } from '@/lib/db';
 import { asJson, emptyTree, normalisePath, starterTree, uniqueSlug } from '@/lib/projects';
 import { getTemplate } from '@/lib/builder/templates';
 
@@ -30,7 +30,7 @@ export async function GET() {
   const userId = await currentUserId();
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const projects = await prisma.project.findMany({
+  const projects = await getPrisma().project.findMany({
     where: { ownerId: userId },
     orderBy: { updatedAt: 'desc' },
     select: {
@@ -65,7 +65,7 @@ export async function POST(request: Request) {
 
   const tree = imported?.tree ?? built?.page ?? (starter === false ? emptyTree() : starterTree());
 
-  const project = await prisma.project.create({
+  const project = await getPrisma().project.create({
     data: {
       name,
       slug: await uniqueSlug(name),

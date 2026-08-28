@@ -40,9 +40,8 @@ export function describeDatabaseError(error: unknown): DatabaseFailure | null {
   if (error instanceof Prisma.PrismaClientInitializationError) {
     return {
       status: 503,
-      message:
-        'Cannot connect to the database. Check that DATABASE_URL is set correctly and that the database is reachable.',
-      log: '[db] connection failed — check DATABASE_URL',
+      message: 'Cannot reach the database. Check that the D1 binding in wrangler.jsonc is correct.',
+      log: '[db] connection failed — check the D1 binding',
     };
   }
 
@@ -54,26 +53,26 @@ export function describeDatabaseError(error: unknown): DatabaseFailure | null {
         return {
           status: 503,
           message:
-            'The database is reachable but its schema is missing. Run `npm run db:push` against this database, then try again.',
-          log: `[db] schema missing (${error.code}) — run prisma db push`,
+            'The database is reachable but its schema is missing. Apply migrations/0001_init.sql to it, then try again.',
+          log: `[db] schema missing (${error.code}) — apply the D1 migration`,
         };
       case 'P1001':
       case 'P1002':
         return {
           status: 503,
-          message: 'The database is not responding. Check that DATABASE_URL points at a running database.',
+          message: 'The database is not responding.',
           log: `[db] unreachable (${error.code})`,
         };
       case 'P1000':
         return {
           status: 503,
-          message: 'The database rejected the credentials in DATABASE_URL.',
+          message: 'The database rejected the request credentials.',
           log: '[db] authentication failed (P1000)',
         };
       case 'P1003':
         return {
           status: 503,
-          message: 'The database named in DATABASE_URL does not exist.',
+          message: 'The named database does not exist.',
           log: '[db] database does not exist (P1003)',
         };
       // Two requests raced for the same unique value.

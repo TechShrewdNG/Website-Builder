@@ -7,89 +7,101 @@ template or start blank, edit visually, then publish to a URL or download a
 
 ## Stack
 
-Next.js 15 (App Router) · TypeScript · Prisma + PostgreSQL · Auth.js v5
+Next.js 15 (App Router) · TypeScript · Prisma + Cloudflare D1 · Auth.js v5
 (credentials) · Tailwind for the builder's own UI only — generated sites never
-depend on it.
+depend on it. Deployed to Cloudflare Workers via
+[OpenNext](https://opennext.js.org/cloudflare).
 
 ## Getting started
 
 ```bash
 npm install
-cp .env.example .env          # set DATABASE_URL and AUTH_SECRET
-npm run db:migrate            # create the schema
+cp .env.example .env          # sets a local-only sqlite DATABASE_URL, plus AUTH_SECRET
+npm run db:migrate:dev        # create the local schema (prisma migrate dev)
 npm run dev
 ```
 
-Those two variables are all that's required — `DATABASE_URL` for Postgres and
-`AUTH_SECRET` to sign session tokens (`openssl rand -base64 32`).
+`AUTH_SECRET` (`openssl rand -base64 32`) is the only thing you need to set for
+real. `DATABASE_URL` in `.env` points at a throwaway local SQLite file used
+only by `prisma migrate dev` when you change the schema — the deployed app
+never reads it; it reaches D1 through the `DB` binding in `wrangler.jsonc`
+instead. `npm run dev` runs against that D1 binding too, simulated locally by
+OpenNext.
 
 Register an account at `/register`, then create a site from `/dashboard`.
 
-## Deploying to Vercel
+## Deploying to Cloudflare Workers
 
-Only two environment variables are required on the project:
+The project already has `wrangler.jsonc` configured with a D1 database
+(`qlevr-canvas-db`) and the `qlevr-canvas` Worker name — a separate Worker
+from any other one already in the account, so this never overwrites something
+else already deployed there.
 
-| Variable       | Notes                                              |
-| -------------- | -------------------------------------------------- |
-| `DATABASE_URL` | Must be a **pooled** connection string (see below) |
-| `AUTH_SECRET`  | `openssl rand -base64 32`                          |
+**One-time setup**, from a machine with `wrangler login` run (or a
+`CLOUDFLARE_API_TOKEN` with Workers Scripts:Edit + D1:Edit permissions in the
+environment):
 
-There is deliberately no URL variable. `trustHost` is set, so Auth.js infers
-its own origin from the incoming request and the app works unchanged across
-preview and production deployments. Set `AUTH_URL` only if you mount the app
-under a path prefix, or sit behind a proxy that rewrites the `Host` header.
+```bash
+# Apply the schema to the real (remote) D1 database — only needed once,
+# and again whenever prisma/schema.prisma changes and a new migrations/*.sql
+# file is generated (see below).
+npx wrangler d1 migrations apply qlevr-canvas-db --remote
 
-Serverless functions open a connection per invocation, so a direct Postgres URL
-will exhaust the connection limit under load. Use your provider's pooler —
-Neon's pooled endpoint, Supabase's port 6543, or PgBouncer — and append
-`?pgbouncer=true&connection_limit=1` for PgBouncer-style poolers.
+# The one secret the app needs. DATABASE_URL is not set here — production
+# never reads it.
+npx wrangler secret put AUTH_SECRET
+```
 
-The build applies migrations itself (`prisma migrate deploy`, via
-`scripts/migrate.mjs`), so a fresh database is set up by the first deploy with
-nothing to run by hand. It's idempotent — later deploys report "no pending
-migrations" and move on.
+**Every deploy after that:**
 
-If `DATABASE_URL` is a transaction-mode pooler, migrations may fail: they need
-a session-level advisory lock that PgBouncer-style poolers can't hold. Set
-`DIRECT_URL` to the direct, non-pooled connection string and it will be used
-for the migration step only, with the app still using the pooled URL at
-runtime. `SKIP_DB_MIGRATE=1` opts out entirely.
+```bash
+npm run deploy   # next build && opennextjs-cloudflare build && opennextjs-cloudflare deploy
+```
 
-| Variable      | When you need it                                     |
-| ------------- | ---------------------------------------------------- |
-| `DIRECT_URL`  | Optional — only if your pooler rejects migrations    |
+**Local preview against the real D1 database** (rather than the local
+simulation `npm run dev` uses): `npx wrangler dev --remote`.
 
-`prisma generate` runs in both `postinstall` and `build`, which keeps the
-client from going stale against Vercel's dependency cache.
+**Changing the schema later:** edit `prisma/schema.prisma`, then generate the
+next migration file and apply it:
 
-Dependencies are pinned and `npm audit` reports zero vulnerabilities. Two
-`overrides` pin `postcss` and `sharp` inside Next's own dependency tree, which
-is the only way to patch those without jumping to Next 16. `sharp` is unused at
-runtime anyway, since `images.unoptimized` is set — generated sites are static
-HTML and don't go through the image pipeline.
+```bash
+npx prisma migrate diff --from-local-d1 --to-schema-datamodel prisma/schema.prisma \
+  --script > migrations/0002_your_change.sql
+npx wrangler d1 migrations apply qlevr-canvas-db --remote
+```
+
+### Known limits carried over from D1
+
+- **2,000,000 bytes per row, combined across every column.** Image uploads
+  (`/api/assets`) are capped at 1.4 MB raw so the base64-encoded data URL
+  stays under that; `importedCss`, `customCss`, `faviconData` and
+  `socialImage` are similarly capped with headroom for each other. A page's
+  `tree` (its actual content) is *not* size-capped today — an extremely large,
+  deeply-nested page could in principle exceed the row limit and fail to
+  save. This hasn't come up in practice, but it's a real ceiling this schema
+  didn't have under Postgres.
+- **No true multi-statement transactions.** `$transaction([...])` (the array
+  form, used for publish and page-revision restore) works via D1's batch API.
+  Interactive transactions (`$transaction(async (tx) => ...)`) are not used
+  anywhere in this codebase and wouldn't work if they were.
 
 ## Troubleshooting a deployment
 
 If sign-up or sign-in fails, hit `/api/health` first. It reports which of the
-three things a fresh deploy usually gets wrong is actually wrong:
+things a fresh deploy usually gets wrong is actually wrong:
 
 ```json
 { "ok": false, "checks": {
     "authSecret": "MISSING — sign-in will fail",
-    "databaseUrl": "set",
-    "database": "The database is reachable but its schema is missing. Run `npm run db:push`..." } }
+    "dbBinding": "set",
+    "database": "The database is reachable but its schema is missing. Apply migrations/0001_init.sql to it..." } }
 ```
 
-"I can't create an account" almost always means the schema is missing. Deploys
-now apply migrations during the build, so redeploying is usually the fix. To
-apply them by hand instead:
-
-```bash
-DATABASE_URL="<production url>" npm run db:migrate
-```
-
-API routes return these as real messages with a 503, so the cause also shows up
-in the sign-up form itself rather than as a generic failure.
+"I can't create an account" almost always means the schema was never applied
+to the D1 database — run the `wrangler d1 migrations apply ... --remote`
+command above. API routes return these as real messages with a 503, so the
+cause also shows up in the sign-up form itself rather than as a generic
+failure.
 
 ## How it works
 
@@ -362,8 +374,8 @@ Two things worth knowing before running this with untrusted users:
   user's own site. Combined with the CSP above, markup is free-form but scripts
   don't execute.
 
-Image uploads are capped at 2 MB and stored as data URLs on the `Asset` row to
-keep the stack to one dependency. Moving to S3/R2 means changing only
+Image uploads are capped at 1.4 MB and stored as data URLs on the `Asset` row
+to keep the stack to one dependency (D1). Moving to R2 means changing only
 `src/app/api/assets/route.ts` and the meaning of the `data` column.
 
 ## What isn't built

@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { currentUserId } from '@/lib/auth';
 import { Prisma } from '@prisma/client';
 
-import { prisma } from '@/lib/db';
+import { getPrisma } from '@/lib/db';
 import { requireProject } from '@/lib/projects';
 import { toResponse, unauthorized } from '@/lib/http';
 
@@ -27,6 +27,7 @@ export async function POST(request: Request, { params }: Params) {
   try {
     const { id } = await params;
     const project = await requireProject(id, userId);
+    const prisma = getPrisma();
 
     if (!parsed.data.published) {
       await prisma.project.update({ where: { id }, data: { published: false } });

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { currentUserId } from '@/lib/auth';
-import { prisma } from '@/lib/db';
+import { getPrisma } from '@/lib/db';
 import { asJson, requirePage } from '@/lib/projects';
 import { toResponse, unauthorized } from '@/lib/http';
 
@@ -26,6 +26,7 @@ export async function GET(_request: Request, { params }: Params) {
   try {
     const { pageId } = await params;
     await requirePage(pageId, userId);
+    const prisma = getPrisma();
 
     const revisions = await prisma.pageRevision.findMany({
       where: { pageId },
@@ -52,6 +53,7 @@ export async function POST(request: Request, { params }: Params) {
   try {
     const { pageId } = await params;
     const page = await requirePage(pageId, userId);
+    const prisma = getPrisma();
 
     const revision = await prisma.pageRevision.create({
       data: { pageId, label: parsed.data.label || null, tree: asJson(page.tree) },

@@ -71,7 +71,7 @@ export default function PagesPanel({
     if (!activeId) return;
     const response = await fetch(`/api/pages/${activeId}/revisions`);
     if (!response.ok) return;
-    const payload = await response.json();
+    const payload: any = await response.json();
     setRevisions(payload.revisions ?? []);
   }, [activeId]);
 

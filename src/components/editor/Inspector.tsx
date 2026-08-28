@@ -484,7 +484,7 @@ function ImageField({
       form.append('projectId', projectId);
 
       const response = await fetch('/api/assets', { method: 'POST', body: form });
-      const payload = await response.json().catch(() => ({}));
+      const payload: any = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error ?? 'Upload failed');
 
       onChange(payload.asset.data);

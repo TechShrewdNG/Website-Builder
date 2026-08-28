@@ -1,7 +1,7 @@
 import { notFound, redirect } from 'next/navigation';
 
 import { auth } from '@/lib/auth';
-import { prisma } from '@/lib/db';
+import { getPrisma } from '@/lib/db';
 import EditorShell from '@/components/editor/EditorShell';
 import type { BuilderNode } from '@/lib/builder/types';
 import { readTheme } from '@/lib/builder/theme';
@@ -13,6 +13,7 @@ export default async function EditorPage({ params }: { params: Promise<{ project
   if (!session?.user) redirect('/login');
 
   const { projectId } = await params;
+  const prisma = getPrisma();
   const project = await prisma.project.findFirst({
     where: { id: projectId, ownerId: session.user.id },
     include: { pages: { orderBy: { sortOrder: 'asc' } } },

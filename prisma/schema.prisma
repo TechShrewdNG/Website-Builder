@@ -1,9 +1,19 @@
+// The legacy generator, kept at its default output (node_modules/@prisma/client)
+// deliberately: @opennextjs/cloudflare's build has patching logic specifically
+// for that default layout to make the wasm query engine loadable in a Worker.
+// A custom `output` (or the newer `prisma-client` generator) skips that
+// patch entirely and the wasm file ends up missing at runtime.
 generator client {
   provider = "prisma-client-js"
 }
 
+// D1 is SQLite under the hood, reached through the Prisma D1 driver adapter
+// (see src/lib/db.ts) rather than a connection string — there is no
+// DATABASE_URL on Cloudflare, only the `DB` binding in wrangler.jsonc.
+// DATABASE_URL here is read only by local CLI commands (`prisma migrate dev`
+// etc.), pointed at a throwaway local SQLite file — never by the deployed app.
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -31,12 +41,12 @@ model Account {
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
+  refresh_token     String?
+  access_token      String?
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String? @db.Text
+  id_token          String?
   session_state     String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -74,8 +84,8 @@ model Project {
   published Boolean  @default(false)
 
   // Site-wide CSS carried over from an imported template, plus user globals.
-  importedCss String? @db.Text
-  customCss   String? @db.Text
+  importedCss String?
+  customCss   String?
   // Fonts / colour tokens shown in the style panel, as JSON.
   theme       Json?
 
@@ -87,7 +97,7 @@ model Project {
   publishedFooterTree Json?
 
   /// Favicon for generated sites, as a data URL.
-  faviconData String? @db.Text
+  faviconData String?
 
   /// Final public origin of the exported site, e.g. https://example.com.
   /// Canonical URLs and sitemap.xml need absolute URLs, and the host a .zip
@@ -120,7 +130,7 @@ model Page {
   // --- SEO -----------------------------------------------------------------
   description String?
   /// Social card image (og:image), as a data URL or absolute URL.
-  socialImage String? @db.Text
+  socialImage String?
   /// Emits noindex, for pages that shouldn't reach search results.
   noIndex     Boolean @default(false)
 
@@ -141,7 +151,7 @@ model Asset {
   mimeType  String
   size      Int
   // Small images are stored inline as data URLs to keep the MVP single-service.
-  data      String   @db.Text
+  data      String  
   createdAt DateTime @default(now())
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)

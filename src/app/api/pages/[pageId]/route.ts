@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { currentUserId } from '@/lib/auth';
-import { prisma } from '@/lib/db';
+import { getPrisma } from '@/lib/db';
 import { asJson, normalisePath, requirePage } from '@/lib/projects';
 import { toResponse, unauthorized } from '@/lib/http';
 
@@ -15,7 +15,10 @@ const patchSchema = z.object({
     .optional(),
   tree: z.unknown().optional(),
   description: z.string().max(320).optional(),
-  socialImage: z.string().max(4_000_000).optional(),
+  // A page's row also carries `tree` (often the largest column) and
+  // `publishedTree`, both uncapped JSON — so this stays well under D1's
+  // 2,000,000-byte row cap rather than claiming the whole budget itself.
+  socialImage: z.string().max(800_000).optional(),
   noIndex: z.boolean().optional(),
 });
 
@@ -44,6 +47,7 @@ export async function PATCH(request: Request, { params }: Params) {
   try {
     const { pageId } = await params;
     const page = await requirePage(pageId, userId);
+    const prisma = getPrisma();
 
     const path = parsed.data.path ? normalisePath(parsed.data.path) : undefined;
     if (path && path !== page.path) {
@@ -91,6 +95,7 @@ export async function DELETE(_request: Request, { params }: Params) {
   try {
     const { pageId } = await params;
     const page = await requirePage(pageId, userId);
+    const prisma = getPrisma();
 
     const count = await prisma.page.count({ where: { projectId: page.projectId } });
     if (count <= 1) {

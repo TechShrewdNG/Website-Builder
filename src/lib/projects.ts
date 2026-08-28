@@ -8,7 +8,7 @@ import 'server-only';
 
 import { Prisma } from '@prisma/client';
 
-import { prisma } from './db';
+import { getPrisma } from './db';
 import { createRoot } from './builder/tree';
 import { createNode } from './builder/widgets';
 import type { BuilderNode } from './builder/types';
@@ -23,6 +23,7 @@ export class HttpError extends Error {
 }
 
 export async function requireProject(projectId: string, userId: string) {
+  const prisma = getPrisma();
   const project = await prisma.project.findFirst({
     where: { id: projectId, ownerId: userId },
     include: { pages: { orderBy: { sortOrder: 'asc' } } },
@@ -32,6 +33,7 @@ export async function requireProject(projectId: string, userId: string) {
 }
 
 export async function requirePage(pageId: string, userId: string) {
+  const prisma = getPrisma();
   const page = await prisma.page.findFirst({
     where: { id: pageId, project: { ownerId: userId } },
     include: { project: true },
@@ -42,6 +44,7 @@ export async function requirePage(pageId: string, userId: string) {
 
 /** URL-safe, collision-free project slug. */
 export async function uniqueSlug(name: string): Promise<string> {
+  const prisma = getPrisma();
   const base =
     name
       .toLowerCase()

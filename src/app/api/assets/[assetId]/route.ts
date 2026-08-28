@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
 import { currentUserId } from '@/lib/auth';
-import { prisma } from '@/lib/db';
+import { getPrisma } from '@/lib/db';
 import { toResponse, unauthorized } from '@/lib/http';
 
 type Params = { params: Promise<{ assetId: string }> };
@@ -12,6 +12,7 @@ export async function DELETE(_request: Request, { params }: Params) {
 
   try {
     const { assetId } = await params;
+    const prisma = getPrisma();
 
     // Scoped through the owning project, so an id alone grants nothing.
     const asset = await prisma.asset.findFirst({

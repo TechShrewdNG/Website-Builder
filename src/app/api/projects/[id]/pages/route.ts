@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { currentUserId } from '@/lib/auth';
-import { prisma } from '@/lib/db';
+import { getPrisma } from '@/lib/db';
 import { asJson, emptyTree, normalisePath, requireProject } from '@/lib/projects';
 import { toResponse, unauthorized } from '@/lib/http';
 
@@ -35,7 +35,7 @@ export async function POST(request: Request, { params }: Params) {
       return NextResponse.json({ error: `A page already exists at ${path}` }, { status: 409 });
     }
 
-    const page = await prisma.page.create({
+    const page = await getPrisma().page.create({
       data: {
         projectId: project.id,
         title: parsed.data.title,

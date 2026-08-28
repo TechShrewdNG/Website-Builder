@@ -27,7 +27,7 @@ export default function AuthForm({ mode }: { mode: 'login' | 'register' }) {
           body: JSON.stringify({ email, password, name: String(form.get('name') ?? '') || undefined }),
         });
         if (!response.ok) {
-          const body = await response.json().catch(() => ({}));
+          const body: any = await response.json().catch(() => ({}));
           throw new Error(body.error ?? 'Could not create the account');
         }
       }
