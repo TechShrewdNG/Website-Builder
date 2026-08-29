@@ -1,0 +1,240 @@
+/* Lumen Beauty Studio — salon & spa template
+   ------------------------------------------------------------------
+   Palette and type stacks live in :root so the builder's Design tokens
+   panel can re-brand the whole site from a few swatches. */
+
+:root {
+  --brand-plum: #4a2f3d;
+  --brand-rose: #c98f8a;
+  --brand-blush: #f6eeec;
+  --brand-sand: #efe4df;
+  --brand-ink: #33262c;
+  --brand-muted: #8a7780;
+  --brand-line: #e3d2cd;
+  --font-display: 'Palatino Linotype', Palatino, Georgia, serif;
+  --font-body: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: #ffffff;
+  color: var(--brand-ink);
+  font-family: var(--font-body);
+  font-size: 17px;
+  line-height: 1.75;
+  -webkit-font-smoothing: antialiased;
+}
+
+img { max-width: 100%; height: auto; display: block; }
+
+.wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+.band { padding: 104px 0; }
+.band-tight { padding: 66px 0; }
+.band-blush { background: var(--brand-blush); }
+.band-plum { background: var(--brand-plum); color: var(--brand-blush); }
+
+/* --- type --------------------------------------------------------- */
+
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  line-height: 1.2;
+  margin: 0 0 20px;
+  color: var(--brand-plum);
+}
+
+h1 { font-size: 56px; letter-spacing: -0.01em; }
+h2 { font-size: 36px; }
+h3 { font-size: 21px; }
+h4 { font-size: 16px; font-family: var(--font-body); font-weight: 700; letter-spacing: 0.02em; }
+
+.band-plum h1, .band-plum h2, .band-plum h3 { color: #ffffff; }
+
+p { margin: 0 0 18px; }
+
+.eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--brand-rose);
+  margin: 0 0 20px;
+}
+
+.lead { font-size: 19px; color: var(--brand-muted); }
+.band-plum .lead { color: #d9c4c9; }
+.muted { color: var(--brand-muted); }
+.center { text-align: center; }
+.narrow { max-width: 620px; margin-left: auto; margin-right: auto; }
+
+/* --- header ------------------------------------------------------- */
+
+.site-header { padding: 28px 0; background: #ffffff; }
+
+.header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+  flex-wrap: wrap;
+}
+
+.brand {
+  font-family: var(--font-display);
+  font-size: 26px;
+  color: var(--brand-plum);
+  text-decoration: none;
+  letter-spacing: 0.06em;
+}
+
+.site-nav ul { list-style: none; display: flex; gap: 34px; margin: 0; padding: 0; }
+
+.site-nav a {
+  color: var(--brand-ink);
+  text-decoration: none;
+  font-size: 13px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.site-nav a:hover { color: var(--brand-rose); }
+
+/* --- buttons ------------------------------------------------------ */
+
+.btn {
+  display: inline-block;
+  background: var(--brand-plum);
+  color: #ffffff;
+  padding: 16px 40px;
+  border-radius: 999px;
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.btn:hover { background: var(--brand-rose); }
+
+.btn-light {
+  display: inline-block;
+  background: #ffffff;
+  color: var(--brand-plum);
+  padding: 16px 40px;
+  border-radius: 999px;
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.btn-light:hover { background: var(--brand-blush); }
+
+/* --- hero --------------------------------------------------------- */
+
+.hero-img img { width: 100%; height: 480px; object-fit: cover; }
+
+.hero-panel {
+  background: #ffffff;
+  max-width: 700px;
+  margin: -96px auto 0;
+  position: relative;
+  padding: 56px 60px 50px;
+  text-align: center;
+}
+
+/* --- split -------------------------------------------------------- */
+
+.split { display: grid; grid-template-columns: 1fr 1fr; gap: 72px; align-items: center; }
+
+/* --- gallery ------------------------------------------------------ */
+
+.gallery { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+.gallery img { width: 100%; }
+
+/* --- service tables ----------------------------------------------- */
+
+table { width: 100%; border-collapse: collapse; margin: 0 0 46px; font-size: 16px; }
+
+th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--brand-rose);
+  padding: 0 0 16px;
+  border-bottom: 1px solid var(--brand-line);
+}
+
+td { padding: 20px 0; border-bottom: 1px solid var(--brand-line); vertical-align: top; }
+
+td:first-child {
+  font-family: var(--font-display);
+  font-size: 19px;
+  color: var(--brand-plum);
+  width: 36%;
+}
+
+td:last-child { text-align: right; white-space: nowrap; color: var(--brand-rose); width: 16%; }
+
+/* --- contact ------------------------------------------------------ */
+
+.contact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 72px; }
+.contact-block { margin-bottom: 32px; }
+.contact-block h4 { margin-bottom: 4px; color: var(--brand-plum); }
+.contact-block p { margin: 0; color: var(--brand-muted); }
+
+.contact-link {
+  display: inline-block;
+  color: var(--brand-rose);
+  text-decoration: none;
+  border-bottom: 1px solid var(--brand-line);
+  padding-bottom: 2px;
+}
+
+.contact-link:hover { border-bottom-color: var(--brand-rose); }
+
+/* --- lists -------------------------------------------------------- */
+
+.plainlist { list-style: none; margin: 0 0 26px; padding: 0; }
+
+.plainlist li {
+  padding: 13px 0 13px 24px;
+  border-bottom: 1px solid var(--brand-line);
+  color: var(--brand-muted);
+  position: relative;
+}
+
+.plainlist li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 24px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--brand-rose);
+}
+
+/* --- footer ------------------------------------------------------- */
+
+.site-footer { background: var(--brand-sand); padding: 56px 0 46px; text-align: center; }
+.site-footer p { margin: 14px 0 0; color: var(--brand-muted); font-size: 15px; }
+
+/* --- responsive --------------------------------------------------- */
+
+@media (max-width: 880px) {
+  h1 { font-size: 38px; }
+  h2 { font-size: 28px; }
+  .band { padding: 64px 0; }
+  .split, .contact-grid { grid-template-columns: 1fr; gap: 36px; }
+  .gallery { grid-template-columns: 1fr; }
+  .hero-img img { height: 320px; }
+  .hero-panel { margin-top: -50px; padding: 36px 28px; }
+  .header-inner { justify-content: center; }
+  .site-nav ul { gap: 20px; flex-wrap: wrap; justify-content: center; }
+}

@@ -45,6 +45,17 @@ const VERBATIM = new Set([
 
 const SKIP = new Set(['script', 'style', 'link', 'meta', 'noscript', 'template', 'br', 'title']);
 
+/**
+ * Prefix of the "you'll have to paste this CSS in yourself" warning.
+ *
+ * True for a lone .html file, which cannot reach the stylesheets it links.
+ * Not true for a folder or .zip: `importBundle` resolves and merges those,
+ * and reports the ones it genuinely could not find as `missing` entries
+ * instead. It filters this warning out on that basis, so the two references
+ * share this constant rather than matching on a duplicated message string.
+ */
+export const RELATIVE_STYLESHEET_WARNING = 'Stylesheets are referenced by relative path:';
+
 const CONTAINER_TAGS: Record<string, WidgetType> = {
   section: 'section',
   header: 'section',
@@ -297,7 +308,7 @@ export function importHtml(html: string): ImportResult {
   const relative = externalStylesheets.filter((href) => !/^https?:\/\//i.test(href));
   if (relative.length) {
     warnings.push(
-      `${relative.length} stylesheet(s) are referenced by relative path (${relative.join(', ')}). ` +
+      `${RELATIVE_STYLESHEET_WARNING} ${relative.join(', ')}. ` +
         'Paste their contents into Project CSS, or the page will import unstyled.',
     );
   }

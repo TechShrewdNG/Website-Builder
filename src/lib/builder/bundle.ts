@@ -13,7 +13,7 @@
 
 import JSZip from 'jszip';
 
-import { importHtml, type ImportResult } from './importer';
+import { importHtml, RELATIVE_STYLESHEET_WARNING, type ImportResult } from './importer';
 import { flatten } from './tree';
 import type { BuilderNode } from './types';
 
@@ -352,6 +352,11 @@ export async function importBundle(files: BundleFile[]): Promise<BundleResult> {
     });
 
     for (const warning of result.warnings) {
+      // A bundle resolves relative stylesheets itself, so the single-file
+      // advice to paste them in by hand is not just noise here — it is wrong,
+      // and it appears on the summary of every template that links its CSS.
+      // Ones that genuinely could not be found are reported under `missing`.
+      if (warning.startsWith(RELATIVE_STYLESHEET_WARNING)) continue;
       // Per-file warnings would repeat identically across a template's pages.
       if (!warnings.includes(warning)) warnings.push(warning);
     }

@@ -1,0 +1,236 @@
+/* Field & Frame — photography portfolio template
+   ------------------------------------------------------------------
+   Palette and type stacks live in :root so the builder's Design tokens
+   panel can re-brand the whole site from a few swatches. */
+
+:root {
+  --brand-ink: #141414;
+  --brand-paper: #ffffff;
+  --brand-stone: #f2f1ef;
+  --brand-muted: #8a8a8a;
+  --brand-line: #e2e1de;
+  --brand-accent: #141414;
+  --font-body: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--brand-paper);
+  color: var(--brand-ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.75;
+  -webkit-font-smoothing: antialiased;
+}
+
+img { max-width: 100%; height: auto; display: block; }
+
+.wrap { max-width: 1240px; margin: 0 auto; padding: 0 32px; }
+.wrap-narrow { max-width: 720px; margin: 0 auto; padding: 0 32px; }
+.band { padding: 110px 0; }
+.band-tight { padding: 64px 0; }
+.band-stone { background: var(--brand-stone); }
+.band-ink { background: var(--brand-ink); color: var(--brand-paper); }
+
+/* --- type --------------------------------------------------------- */
+
+h1, h2, h3, h4 {
+  font-weight: 400;
+  line-height: 1.15;
+  margin: 0 0 22px;
+  letter-spacing: -0.01em;
+}
+
+h1 { font-size: 46px; }
+h2 { font-size: 30px; }
+h3 { font-size: 17px; font-weight: 600; letter-spacing: 0.02em; }
+h4 { font-size: 13px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; }
+
+.band-ink h1, .band-ink h2, .band-ink h3 { color: var(--brand-paper); }
+
+p { margin: 0 0 18px; }
+
+.eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--brand-muted);
+  margin: 0 0 22px;
+}
+
+.lead { font-size: 19px; line-height: 1.65; color: #4a4a4a; }
+.band-ink .lead { color: #b0b0b0; }
+.muted { color: var(--brand-muted); }
+.center { text-align: center; }
+
+/* --- header ------------------------------------------------------- */
+
+.site-header { padding: 34px 0; }
+
+.header-inner {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 28px;
+  flex-wrap: wrap;
+}
+
+.brand {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: var(--brand-ink);
+  text-decoration: none;
+}
+
+.site-nav ul { list-style: none; display: flex; gap: 34px; margin: 0; padding: 0; }
+
+.site-nav a {
+  color: var(--brand-muted);
+  text-decoration: none;
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.site-nav a:hover { color: var(--brand-ink); }
+
+/* --- buttons ------------------------------------------------------ */
+
+.btn {
+  display: inline-block;
+  background: var(--brand-ink);
+  color: var(--brand-paper);
+  padding: 16px 40px;
+  text-decoration: none;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+}
+
+.btn:hover { background: #3a3a3a; }
+
+.btn-light {
+  display: inline-block;
+  background: var(--brand-paper);
+  color: var(--brand-ink);
+  padding: 16px 40px;
+  text-decoration: none;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+}
+
+.btn-light:hover { background: var(--brand-stone); }
+
+/* --- hero --------------------------------------------------------- */
+
+.hero-full img { width: 100%; height: 640px; object-fit: cover; }
+
+.hero-caption {
+  display: flex;
+  justify-content: space-between;
+  gap: 28px;
+  flex-wrap: wrap;
+  padding: 22px 0 0;
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--brand-muted);
+}
+
+.hero-caption p { margin: 0; }
+
+/* --- gallery ------------------------------------------------------ */
+
+.gallery-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
+.gallery-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; }
+.gallery-offset { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items: end; }
+
+.shot { margin: 0; }
+.shot img { width: 100%; }
+
+.shot-label {
+  margin: 14px 0 0;
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--brand-muted);
+}
+
+/* --- split -------------------------------------------------------- */
+
+.split { display: grid; grid-template-columns: 1fr 1fr; gap: 72px; align-items: center; }
+
+/* --- lists -------------------------------------------------------- */
+
+.plainlist { list-style: none; margin: 0 0 26px; padding: 0; }
+
+.plainlist li {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--brand-line);
+  color: #4a4a4a;
+}
+
+.band-ink .plainlist li { border-bottom-color: #333333; color: #b0b0b0; }
+
+/* --- tables ------------------------------------------------------- */
+
+table { width: 100%; border-collapse: collapse; margin: 0 0 36px; font-size: 15px; }
+
+th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--brand-muted);
+  padding: 0 0 16px;
+  border-bottom: 1px solid var(--brand-line);
+}
+
+td { padding: 18px 0; border-bottom: 1px solid var(--brand-line); vertical-align: top; }
+td:first-child { font-weight: 600; width: 38%; }
+td:last-child { text-align: right; color: var(--brand-muted); white-space: nowrap; }
+
+/* --- contact ------------------------------------------------------ */
+
+.contact-block { margin-bottom: 28px; }
+.contact-block h4 { margin-bottom: 6px; }
+.contact-block p { margin: 0; color: var(--brand-muted); }
+
+.contact-link {
+  display: inline-block;
+  color: var(--brand-ink);
+  text-decoration: none;
+  border-bottom: 1px solid var(--brand-ink);
+  padding-bottom: 2px;
+  font-size: 18px;
+}
+
+.band-ink .contact-link { color: var(--brand-paper); border-bottom-color: var(--brand-paper); }
+
+/* --- footer ------------------------------------------------------- */
+
+.site-footer { border-top: 1px solid var(--brand-line); padding: 48px 0 44px; }
+.footer-inner { display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: center; }
+.site-footer p { margin: 0; color: var(--brand-muted); font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; }
+
+/* --- responsive --------------------------------------------------- */
+
+@media (max-width: 900px) {
+  h1 { font-size: 31px; }
+  h2 { font-size: 24px; }
+  .band { padding: 60px 0; }
+  .wrap, .wrap-narrow { padding: 0 22px; }
+  .hero-full img { height: 380px; }
+  .gallery-2, .gallery-3, .gallery-offset, .split { grid-template-columns: 1fr; gap: 24px; }
+  .header-inner { justify-content: center; }
+  .site-nav ul { gap: 20px; flex-wrap: wrap; justify-content: center; }
+}

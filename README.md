@@ -30,6 +30,22 @@ OpenNext.
 
 Register an account at `/register`, then create a site from `/dashboard`.
 
+## Starter templates
+
+`templates/` holds six multi-page HTML templates — restaurant, law firm,
+fitness studio, salon, trades and photography — written specifically to
+import as fully editable widgets rather than opaque markup.
+
+```bash
+node templates/build.mjs      # writes importable .zip files to templates/dist/
+node templates/audit.mjs      # checks they still import with zero raw-HTML nodes
+```
+
+Each declares its palette as `:root` custom properties, which the builder
+surfaces in **Site → Design tokens** with a colour picker per value, so a
+template can be re-branded without editing CSS. See `templates/README.md`
+for the full tag-to-widget mapping and the rules for writing your own.
+
 ## Deploying to Cloudflare Workers
 
 The project already has `wrangler.jsonc` configured with a D1 database
