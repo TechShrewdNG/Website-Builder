@@ -14,6 +14,12 @@ import {
   type ExtractedAsset,
 } from '@/lib/builder/bundle';
 import Icon from '@/components/Icon';
+import {
+  STARTER_TEMPLATES,
+  templateArchive,
+  templateThumbnail,
+  type StarterTemplate,
+} from '@/lib/builder/starterTemplates';
 
 /**
  * Retries a fetch on transient failures (5xx, or the request never reaching
@@ -57,6 +63,8 @@ export default function NewProjectPanel() {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState<{ result: ImportResult; filename: string } | null>(null);
   const [bundle, setBundle] = useState<{ result: BundleResult; label: string } | null>(null);
+  /** Which starter template is selected, so its card can show as active. */
+  const [templateId, setTemplateId] = useState<string | null>(null);
   const folderInput = useRef<HTMLInputElement>(null);
   const zipInput = useRef<HTMLInputElement>(null);
 
@@ -189,7 +197,14 @@ export default function NewProjectPanel() {
     }
   }
 
-  async function loadBundle(files: BundleFile[], label: string) {
+  /**
+   * Parses a multi-file bundle and stages it for creation.
+   *
+   * `preferredName` exists for the built-in templates: a template knows its
+   * own short name, where an upload can only guess from the home page's
+   * <title>, which is usually a full SEO sentence and a poor site name.
+   */
+  async function loadBundle(files: BundleFile[], label: string, preferredName?: string): Promise<boolean> {
     setBusy(true);
     setError(null);
     try {
@@ -198,11 +213,46 @@ export default function NewProjectPanel() {
 
       setBundle({ result, label });
       setPending(null);
-      if (!name) setName(result.pages[0].title || label);
+      // An upload replaces any template that was selected; pickTemplate
+      // re-sets this itself once its own load has succeeded.
+      setTemplateId(null);
+      if (!name) setName(preferredName ?? result.pages[0].title ?? label);
+      return true;
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not read that folder');
+      return false;
     } finally {
       setBusy(false);
+    }
+  }
+
+  /**
+   * Loads one of the built-in templates.
+   *
+   * Deliberately goes through `loadBundle` — the same path an uploaded .zip
+   * takes — rather than getting a shortcut of its own. The archive is a static
+   * asset, so this is a plain fetch, and everything after it (parsing, asset
+   * extraction, per-image upload, page patching) is machinery that already
+   * exists and is already tested.
+   */
+  async function pickTemplate(template: StarterTemplate) {
+    if (busy) return;
+    setError(null);
+    setBusy(true);
+    setProgress('Loading template…');
+
+    try {
+      const response = await fetch(templateArchive(template.id));
+      if (!response.ok) throw new Error(`Could not load the ${template.name} template`);
+
+      if (await loadBundle(await unzip(await response.blob()), template.name, template.name)) {
+        setTemplateId(template.id);
+      }
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Could not load that template');
+    } finally {
+      setBusy(false);
+      setProgress(null);
     }
   }
 
@@ -241,6 +291,7 @@ export default function NewProjectPanel() {
       const result = importHtml(await file.text());
       setPending({ result, filename: file.name });
       setBundle(null);
+      setTemplateId(null);
       if (!name) setName(result.title || file.name.replace(/\.html?$/i, ''));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not read that file');
@@ -270,7 +321,7 @@ export default function NewProjectPanel() {
       <div className="border-b border-edge px-5 py-3.5">
         <h2 className="text-[13px] font-semibold text-white">Start a new site</h2>
         <p className="mt-0.5 text-[12px] text-faint">
-          Build from an empty page, or bring in HTML you already have.
+          Pick a template, start from an empty page, or bring in HTML you already have.
         </p>
       </div>
 
@@ -358,6 +409,68 @@ export default function NewProjectPanel() {
         />
         <input ref={zipInput} type="file" accept=".zip,application/zip" className="hidden" onChange={handleZip} />
 
+        <div className="mt-6 border-t border-edge pt-5">
+          <div className="mb-3 flex items-baseline justify-between gap-3">
+            <h3 className="text-[12px] font-semibold text-neutral-200">Start from a template</h3>
+            <span className="text-[11px] text-faint">
+              Multi-page and fully editable — nothing is locked
+            </span>
+          </div>
+
+          <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+            {STARTER_TEMPLATES.map((template) => {
+              const active = templateId === template.id;
+              return (
+                <button
+                  key={template.id}
+                  type="button"
+                  disabled={busy}
+                  onClick={() => pickTemplate(template)}
+                  aria-pressed={active}
+                  title={`Start from ${template.name}`}
+                  className={`group overflow-hidden rounded-lg border text-left transition-[border-color,background-color] duration-150
+                    disabled:cursor-not-allowed disabled:opacity-60
+                    ${
+                      active
+                        ? 'border-accent bg-accent/[0.07]'
+                        : 'border-edge bg-panelRaised hover:border-accent/40'
+                    }`}
+                >
+                  <span className="relative block aspect-[4/3] overflow-hidden bg-[#0a0114]">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={templateThumbnail(template.id)}
+                      alt=""
+                      loading="lazy"
+                      className="h-full w-full object-cover object-top opacity-90 transition-opacity duration-150 group-hover:opacity-100"
+                    />
+                    {active && (
+                      <span className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-accent text-accentInk">
+                        <Icon name="check" size={13} />
+                      </span>
+                    )}
+                  </span>
+
+                  <span className="block px-3 py-2.5">
+                    <span className="block text-[10px] font-medium uppercase tracking-[0.1em] text-accent">
+                      {template.category}
+                    </span>
+                    <span className="mt-1 flex items-baseline justify-between gap-2">
+                      <span className="text-[13px] font-semibold text-white">{template.name}</span>
+                      <span className="shrink-0 text-[11px] tabular-nums text-faint">
+                        {template.pages} pages
+                      </span>
+                    </span>
+                    <span className="mt-1 block text-[11.5px] leading-snug text-muted">
+                      {template.blurb}
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {pending && (
           <div className="mt-4 animate-ws-rise rounded-lg border border-accent/25 bg-accent/[0.06] p-3.5">
             <div className="flex items-start justify-between gap-3">
@@ -409,7 +522,10 @@ export default function NewProjectPanel() {
               <button
                 type="button"
                 className="shrink-0 text-[12px] text-muted transition-colors duration-150 hover:text-white"
-                onClick={() => setBundle(null)}
+                onClick={() => {
+                  setBundle(null);
+                  setTemplateId(null);
+                }}
               >
                 Discard
               </button>

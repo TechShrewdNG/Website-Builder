@@ -1,20 +1,22 @@
 /**
  * Packs each template folder into an importable .zip.
  *
- * The builder accepts a folder or a .zip; a .zip is the easier thing to hand
- * someone, so that is what ships. Output lands in templates/dist/, which is
- * gitignored — the sources are the artefact worth versioning, not the archives.
+ * Output goes to public/templates/, where it is served as a static asset:
+ * that is what lets the dashboard's template picker fetch one and run it
+ * through the ordinary import pipeline, with no server-side special case and
+ * nothing for the user to download. The same files double as the archives to
+ * hand someone who would rather import by hand.
  *
  * Usage: node templates/build.mjs
  */
 
 import { readdirSync, statSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
-import { dirname, join, relative, sep } from 'node:path';
+import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import JSZip from 'jszip';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const DIST = join(HERE, 'dist');
+const DIST = resolve(HERE, '..', 'public', 'templates');
 
 function walk(dir, base = dir) {
   const out = [];
@@ -45,4 +47,4 @@ for (const name of templates) {
   console.log(`${name}.zip  ${pages} pages, ${files.length} files, ${(buffer.length / 1024).toFixed(0)} KB`);
 }
 
-console.log(`\n${templates.length} templates written to templates/dist/`);
+console.log(`\n${templates.length} templates written to public/templates/`);
