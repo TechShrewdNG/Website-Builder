@@ -108,6 +108,39 @@ try {
   // Nothing should have been left as an unresolved placeholder.
   const leftover = JSON.stringify(projectBody.project?.pages ?? []).match(/asset-pending:\/\//g);
   check('no unresolved image placeholders remain', !leftover, `${leftover?.length ?? 0} left`);
+
+  // --- publish, then walk the site the way a visitor would ---
+  const publishRes = await page.request.post(`${BASE}/api/projects/${projectId}/publish`, {
+    headers: { 'Content-Type': 'application/json' },
+    data: JSON.stringify({ published: true }),
+  });
+  const publishBody = await publishRes.json().catch(() => ({}));
+  check('the site publishes', publishRes.ok(), publishBody.url ?? '');
+
+  const slug = projectBody.project.slug;
+  let unreachable = 0;
+  for (const p of projectBody.project.pages) {
+    const res = await page.request.get(`${BASE}/s/${slug}${p.path === '/' ? '' : p.path}`);
+    if (!res.ok()) unreachable += 1;
+  }
+  check('every published page is reachable', unreachable === 0, `${unreachable} unreachable`);
+
+  // The regression that made a multi-page site look like it only published its
+  // home page: pages were live, but every link between them pointed somewhere
+  // that 404s. Follow the real links rather than trusting the routes.
+  const home = await (await page.request.get(`${BASE}/s/${slug}`)).text();
+  const internal = [...home.matchAll(/href="(\/[^"]*)"/g)]
+    .map((m) => m[1])
+    .filter((href) => !href.startsWith('//'));
+  const offSite = internal.filter((href) => !href.startsWith(`/s/${slug}`));
+  check('links between pages stay inside the published site', offSite.length === 0, offSite.join(', '));
+
+  let brokenLinks = 0;
+  for (const href of [...new Set(internal)]) {
+    const res = await page.request.get(`${BASE}${href}`);
+    if (!res.ok()) brokenLinks += 1;
+  }
+  check('every link on the published home page resolves', brokenLinks === 0, `${brokenLinks} broken`);
 } catch (error) {
   check('run completed without an exception', false, error.message.split('\n')[0]);
 } finally {

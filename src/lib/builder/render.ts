@@ -17,6 +17,27 @@ import { WIDGETS } from './widgets';
 export interface RenderOptions {
   /** Adds selection hooks and empty-state placeholders for the canvas. */
   editor?: boolean;
+  /**
+   * Path the site is mounted under, prefixed onto root-relative links.
+   *
+   * Internal links are stored canonically as the page's own path (`/about`) —
+   * that is what the editor's link picker inserts and what an import is
+   * normalised to. Exported sites sit at a domain root, so those work as
+   * written. A *published* site is served under `/s/<slug>/`, where `/about`
+   * would leave the site entirely and hit the builder's own 404. Setting this
+   * to `/s/<slug>` rewrites them at render time, which keeps one canonical
+   * form in the document model instead of storing links that are only correct
+   * for whichever destination happened to come first.
+   */
+  linkBase?: string;
+}
+
+/** Prefixes a root-relative internal link with `linkBase`; leaves the rest alone. */
+function withBase(href: string, opts: RenderOptions): string {
+  const base = opts.linkBase;
+  // `//host` is protocol-relative and external despite starting with a slash.
+  if (!base || !href.startsWith('/') || href.startsWith('//')) return href;
+  return href === '/' ? base || '/' : `${base}${href}`;
 }
 
 export function escapeHtml(value: unknown): string {
@@ -112,18 +133,18 @@ export function renderNode(node: BuilderNode, opts: RenderOptions = {}): string 
       const target = String(node.props.target ?? '_self');
       const rel = target === '_blank' ? ' rel="noopener noreferrer"' : '';
       // The wrapper carries no `data-ws`: the image stays the selectable node.
-      return `<a href="${escapeAttr(href)}" target="${escapeAttr(target)}"${rel}>${img}</a>`;
+      return `<a href="${escapeAttr(withBase(href, opts))}" target="${escapeAttr(target)}"${rel}>${img}</a>`;
     }
 
     case 'button': {
-      const href = String(node.props.href ?? '#');
+      const href = withBase(String(node.props.href ?? '#'), opts);
       const target = String(node.props.target ?? '_self');
       const rel = target === '_blank' ? 'noopener noreferrer' : undefined;
       return `${open('a', { href, target, rel })}${escapeHtml(node.props.text)}</a>`;
     }
 
     case 'link': {
-      const href = String(node.props.href ?? '#');
+      const href = withBase(String(node.props.href ?? '#'), opts);
       const target = String(node.props.target ?? '_self');
       const rel = target === '_blank' ? 'noopener noreferrer' : undefined;
       return `${open('a', { href, target, rel })}${renderChildren(node, opts)}</a>`;
@@ -132,7 +153,7 @@ export function renderNode(node: BuilderNode, opts: RenderOptions = {}): string 
     case 'icon': {
       const glyph = escapeHtml(node.props.glyph ?? '★');
       const href = String(node.props.href ?? '');
-      if (href) return `${open('a', { href })}<span aria-hidden="true">${glyph}</span></a>`;
+      if (href) return `${open('a', { href: withBase(href, opts) })}<span aria-hidden="true">${glyph}</span></a>`;
       return `${open('span', { 'aria-hidden': 'true' })}${glyph}</span>`;
     }
 
@@ -149,7 +170,7 @@ export function renderNode(node: BuilderNode, opts: RenderOptions = {}): string 
         .map((item) => {
           const label = escapeHtml(item.text ?? '');
           const inner = item.href
-            ? `<a href="${escapeAttr(item.href)}">${label}</a>`
+            ? `<a href="${escapeAttr(withBase(item.href, opts))}">${label}</a>`
             : label;
           return `<li>${inner}</li>`;
         })
@@ -467,7 +488,7 @@ ${styles}
 ${opts.headExtra ?? ''}
 </head>
 <body>
-${renderNode(root, { editor: opts.editor })}
+${renderNode(root, { editor: opts.editor, linkBase: opts.linkBase })}
 ${script}
 ${opts.bodyExtra ?? ''}
 </body>

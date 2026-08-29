@@ -699,3 +699,46 @@ test('clearing the last state declaration removes the state entirely', () => {
   assert.equal(findNode(tree, button.id)?.states, undefined);
   assert.ok(!compileCss(tree).includes(':hover'));
 });
+
+test('a published site prefixes internal links with its base path', () => {
+  const nav = createNode('list');
+  nav.props = {
+    ordered: false,
+    items: [
+      { text: 'Home', href: '/' },
+      { text: 'About', href: '/about' },
+      { text: 'Elsewhere', href: 'https://example.com' },
+      { text: 'Email', href: 'mailto:a@b.example' },
+    ],
+  };
+
+  const cta = createNode('button');
+  cta.props = { text: 'Contact', href: '/contact', target: '_self' };
+
+  const root = createRoot([nav, cta]);
+  const html = renderNode(root, { linkBase: '/s/demo' });
+
+  // Internal links move under the published prefix...
+  assert.match(html, /href="\/s\/demo"/);
+  assert.match(html, /href="\/s\/demo\/about"/);
+  assert.match(html, /href="\/s\/demo\/contact"/);
+  // ...and everything external is untouched.
+  assert.match(html, /href="https:\/\/example.com"/);
+  assert.match(html, /href="mailto:a@b.example"/);
+});
+
+test('without a base path internal links stay root-relative, as an export needs', () => {
+  const cta = createNode('button');
+  cta.props = { text: 'Contact', href: '/contact', target: '_self' };
+
+  const html = renderNode(createRoot([cta]));
+  assert.match(html, /href="\/contact"/);
+  assert.doesNotMatch(html, /\/s\//);
+});
+
+test('a protocol-relative link is not mistaken for an internal one', () => {
+  const cta = createNode('button');
+  cta.props = { text: 'CDN', href: '//cdn.example.com/x', target: '_self' };
+
+  assert.match(renderNode(createRoot([cta]), { linkBase: '/s/demo' }), /href="\/\/cdn.example.com\/x"/);
+});

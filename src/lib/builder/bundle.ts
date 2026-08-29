@@ -375,6 +375,13 @@ export async function importBundle(files: BundleFile[]): Promise<BundleResult> {
     seenRoutes.add(candidate);
   }
 
+  // Only once every page's final route is known can links between them be
+  // rewritten — a template navigates by filename ("menu.html"), which is not
+  // a route this app serves. Left alone, every page still imports and
+  // publishes correctly but nothing links to anything, which looks exactly
+  // like only the home page having been published.
+  rewriteInternalLinks(pages, warnings);
+
   return {
     pages,
     css: stylesheets.join('\n\n'),
@@ -383,6 +390,67 @@ export async function importBundle(files: BundleFile[]): Promise<BundleResult> {
     missing: dedupeMissing(missing),
     resolvedAssets,
   };
+}
+
+/**
+ * Points links between the bundle's own pages at their imported routes.
+ *
+ * A downloaded template links by filename — `about.html`, `../index.html` —
+ * because that is how it works as loose files on disk. Imported, those pages
+ * live at `/about` and `/`, so every one of those links 404s on the published
+ * site. This resolves each href against the page that holds it and, when it
+ * lands on another page in the same bundle, swaps it for that page's route.
+ *
+ * Anything else is left exactly as written: external URLs, `mailto:`, `tel:`,
+ * bare fragments, and links to files the bundle does not contain (which may
+ * well exist on the server the site is headed for).
+ */
+function rewriteInternalLinks(pages: BundlePage[], warnings: string[]): void {
+  const routeByFile = new Map(pages.map((page) => [page.file, page.path]));
+  let rewritten = 0;
+
+  /** Returns the replacement href, or null to leave it untouched. */
+  const remap = (href: string, from: string): string | null => {
+    if (!href || isExternal(href) || /^[a-z][a-z0-9+.-]*:/i.test(href)) return null;
+
+    // Keep any #fragment or ?query attached to the destination.
+    const split = href.search(/[?#]/);
+    const path = split === -1 ? href : href.slice(0, split);
+    const suffix = split === -1 ? '' : href.slice(split);
+    if (!path) return null;
+
+    const route = routeByFile.get(resolvePath(from, path));
+    return route ? `${route}${suffix}` : null;
+  };
+
+  for (const page of pages) {
+    for (const node of flatten(page.root)) {
+      if (typeof node.props.href === 'string') {
+        const next = remap(node.props.href, page.file);
+        if (next !== null) {
+          node.props.href = next;
+          rewritten += 1;
+        }
+      }
+
+      if (Array.isArray(node.props.items)) {
+        node.props.items = (node.props.items as Record<string, unknown>[]).map((item) => {
+          if (typeof item.href !== 'string') return item;
+          const next = remap(item.href, page.file);
+          if (next === null) return item;
+          rewritten += 1;
+          return { ...item, href: next };
+        });
+      }
+    }
+  }
+
+  if (rewritten) {
+    warnings.push(
+      `${rewritten} link${rewritten === 1 ? '' : 's'} between the template's own pages ` +
+        'were repointed at their new addresses.',
+    );
+  }
 }
 
 function dedupeMissing(missing: MissingRef[]): MissingRef[] {

@@ -73,6 +73,11 @@ export async function GET(request: Request, { params }: { params: Promise<{ slug
     customCss: project.customCss,
     theme,
     headExtra: externalLinks,
+    // Pages are stored with canonical internal links (`/about`), but a
+    // published site lives under /s/<slug>/ — without this every link between
+    // pages would leave the site and hit the builder's own 404, which reads as
+    // "only the home page published".
+    linkBase: `/s/${project.slug}`,
   }).replace('<script>', `<script nonce="${nonce}">`);
 
   return new Response(html, {

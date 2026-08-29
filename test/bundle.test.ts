@@ -140,3 +140,86 @@ test('an empty bundle reports rather than throwing', async () => {
   assert.equal(result.pages.length, 0);
   assert.ok(result.warnings.some((warning) => warning.includes('No .html')));
 });
+
+test('links between the bundle\'s own pages are repointed at their routes', async () => {
+  const result = await importBundle([
+    file(
+      'index.html',
+      '<body><a href="about.html">About</a><a href="docs/guide.html">Guide</a></body>',
+      'text/html',
+    ),
+    file('about.html', '<body><a href="index.html">Home</a></body>', 'text/html'),
+    file('docs/guide.html', '<body><a href="../about.html">About</a></body>', 'text/html'),
+  ]);
+
+  const hrefs = (path: string) =>
+    flatten(result.pages.find((page) => page.path === path)!.root)
+      .filter((node) => typeof node.props.href === 'string')
+      .map((node) => node.props.href);
+
+  // Relative, nested and parent-relative links all land on the real route.
+  assert.deepEqual(hrefs('/'), ['/about', '/docs/guide']);
+  assert.deepEqual(hrefs('/about'), ['/']);
+  assert.deepEqual(hrefs('/docs/guide'), ['/about']);
+});
+
+test('links a bundle cannot account for are left exactly as written', async () => {
+  const result = await importBundle([
+    file(
+      'index.html',
+      '<body>' +
+        '<a href="https://example.com/x">ext</a>' +
+        '<a href="mailto:a@b.example">mail</a>' +
+        '<a href="tel:+15550100">call</a>' +
+        '<a href="#section">frag</a>' +
+        '<a href="missing.html">gone</a>' +
+        '</body>',
+      'text/html',
+    ),
+  ]);
+
+  const hrefs = flatten(result.pages[0].root)
+    .filter((node) => typeof node.props.href === 'string')
+    .map((node) => node.props.href);
+
+  assert.deepEqual(hrefs, [
+    'https://example.com/x',
+    'mailto:a@b.example',
+    'tel:+15550100',
+    '#section',
+    // Not in the bundle: it may well exist on the server this site is bound for.
+    'missing.html',
+  ]);
+});
+
+test('a fragment or query on an internal link survives the rewrite', async () => {
+  const result = await importBundle([
+    file('index.html', '<body><a href="about.html#team">Team</a></body>', 'text/html'),
+    file('about.html', '<body>about</body>', 'text/html'),
+  ]);
+
+  const href = flatten(result.pages.find((page) => page.path === '/')!.root).find(
+    (node) => typeof node.props.href === 'string',
+  )?.props.href;
+
+  assert.equal(href, '/about#team');
+});
+
+test('nav lists are rewritten too, not just buttons', async () => {
+  const result = await importBundle([
+    file(
+      'index.html',
+      '<body><ul><li><a href="index.html">Home</a></li><li><a href="about.html">About</a></li></ul></body>',
+      'text/html',
+    ),
+    file('about.html', '<body>about</body>', 'text/html'),
+  ]);
+
+  const list = flatten(result.pages.find((page) => page.path === '/')!.root).find(
+    (node) => node.type === 'list',
+  );
+  assert.deepEqual(
+    (list?.props.items as { href: string }[]).map((item) => item.href),
+    ['/', '/about'],
+  );
+});
