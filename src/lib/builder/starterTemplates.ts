@@ -70,6 +70,34 @@ export const STARTER_TEMPLATES: StarterTemplate[] = [
     blurb: 'Minimal and image-led. Full-bleed galleries and a rate card.',
     pages: 3,
   },
+  {
+    id: 'dental-clinic',
+    name: 'Bridgeway Dental',
+    category: 'Health & clinics',
+    blurb: 'Calm and clinical, with a published fee table and clinician profiles.',
+    pages: 3,
+  },
+  {
+    id: 'estate-agency',
+    name: 'Marchmont & Co',
+    category: 'Property',
+    blurb: 'Listing cards, a fee breakdown, and room for proper photography.',
+    pages: 3,
+  },
+  {
+    id: 'guest-house',
+    name: "The Ferryman's Rest",
+    category: 'Hotel & hospitality',
+    blurb: 'Room rates, a booking pitch, and the practical details guests ask for.',
+    pages: 3,
+  },
+  {
+    id: 'community-trust',
+    name: 'Fieldgate Trust',
+    category: 'Charity & community',
+    blurb: 'Impact figures, a session timetable and a volunteering call to action.',
+    pages: 3,
+  },
 ];
 
 export const templateThumbnail = (id: string) => `/templates/${id}.jpg`;

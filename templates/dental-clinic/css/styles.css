@@ -1,0 +1,298 @@
+/* Bridgeway Dental — clinic template
+   ------------------------------------------------------------------
+   Every colour and both type stacks live in :root as custom properties.
+   The builder scrapes these into its Design tokens panel, so the whole
+   site can be re-branded from a handful of swatches without touching a
+   single element. Keep them 6-digit hex: that is what makes the colour
+   picker bind to them. */
+
+:root {
+  --brand-ink: #16323f;
+  --brand-deep: #0f5c73;
+  --brand-accent: #14a0b8;
+  --brand-cream: #f7fbfc;
+  --brand-sand: #e6f1f4;
+  --brand-muted: #5f7480;
+  --brand-line: #d3e3e8;
+  --font-display: 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --font-body: 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--brand-cream);
+  color: var(--brand-ink);
+  font-family: var(--font-body);
+  font-size: 17px;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+}
+
+img { max-width: 100%; height: auto; display: block; }
+
+.wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+.band { padding: 92px 0; }
+.band-tight { padding: 62px 0; }
+.band-sand { background: var(--brand-sand); }
+.band-deep { background: var(--brand-deep); color: var(--brand-cream); }
+
+/* --- type --------------------------------------------------------- */
+
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  line-height: 1.18;
+  margin: 0 0 18px;
+}
+
+h1 { font-size: 54px; letter-spacing: -0.025em; }
+h2 { font-size: 36px; letter-spacing: -0.015em; }
+h3 { font-size: 22px; }
+h4 { font-size: 18px; }
+
+p { margin: 0 0 18px; }
+
+.eyebrow {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--brand-accent);
+  margin: 0 0 16px;
+}
+
+.lead { font-size: 20px; line-height: 1.6; color: var(--brand-muted); }
+.muted { color: var(--brand-muted); }
+.center { text-align: center; }
+.narrow { max-width: 640px; margin-left: auto; margin-right: auto; }
+
+/* --- header ------------------------------------------------------- */
+
+.site-header {
+  background: #ffffff;
+  border-bottom: 1px solid var(--brand-line);
+  padding: 18px 0;
+}
+
+.header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+  flex-wrap: wrap;
+}
+
+.brand {
+  font-family: var(--font-display);
+  font-size: 23px;
+  font-weight: 700;
+  color: var(--brand-deep);
+  text-decoration: none;
+  letter-spacing: -0.02em;
+}
+
+.site-nav ul {
+  list-style: none;
+  display: flex;
+  gap: 30px;
+  margin: 0;
+  padding: 0;
+}
+
+.site-nav a {
+  color: var(--brand-ink);
+  text-decoration: none;
+  font-size: 15px;
+  padding-bottom: 3px;
+  border-bottom: 2px solid transparent;
+}
+
+.site-nav a:hover { border-bottom-color: var(--brand-accent); }
+
+/* --- buttons ------------------------------------------------------ */
+
+.btn {
+  display: inline-block;
+  background: var(--brand-accent);
+  color: #ffffff;
+  padding: 15px 32px;
+  border-radius: 40px;
+  text-decoration: none;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.btn:hover { background: var(--brand-deep); }
+
+.btn-outline {
+  display: inline-block;
+  background: transparent;
+  color: var(--brand-cream);
+  border: 2px solid var(--brand-cream);
+  padding: 13px 30px;
+  border-radius: 40px;
+  text-decoration: none;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.btn-outline:hover { background: var(--brand-cream); color: var(--brand-deep); }
+
+/* --- hero --------------------------------------------------------- */
+
+.hero { background: #ffffff; padding: 76px 0 0; }
+
+.hero-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 60px;
+  align-items: center;
+}
+
+.hero-img img { width: 100%; height: 460px; object-fit: cover; border-radius: 14px; }
+
+/* --- grids -------------------------------------------------------- */
+
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 34px;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 44px;
+}
+
+.split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 62px;
+  align-items: center;
+}
+
+.split img { border-radius: 14px; }
+
+.card {
+  background: #ffffff;
+  border: 1px solid var(--brand-line);
+  border-radius: 14px;
+  padding: 32px 30px;
+}
+
+.card h3 { margin-bottom: 10px; }
+.card p { margin: 0; color: var(--brand-muted); font-size: 16px; }
+
+.person img { width: 100%; height: 300px; object-fit: cover; border-radius: 14px; margin-bottom: 18px; }
+.person h3 { margin-bottom: 4px; }
+.person p { margin: 0; color: var(--brand-muted); font-size: 16px; }
+
+/* --- lists -------------------------------------------------------- */
+
+.tick-list {
+  list-style: none;
+  margin: 0 0 26px;
+  padding: 0;
+}
+
+.tick-list li {
+  padding: 12px 0 12px 26px;
+  border-bottom: 1px solid var(--brand-line);
+  position: relative;
+  color: var(--brand-muted);
+}
+
+.tick-list li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 21px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--brand-accent);
+}
+
+/* --- tables (fees, hours) ----------------------------------------- */
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 42px;
+  font-size: 16px;
+}
+
+th {
+  text-align: left;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--brand-accent);
+  padding: 0 0 14px;
+  border-bottom: 2px solid var(--brand-line);
+}
+
+td {
+  padding: 17px 0;
+  border-bottom: 1px solid var(--brand-line);
+  vertical-align: top;
+}
+
+td:first-child { font-weight: 600; width: 40%; }
+td:last-child { text-align: right; white-space: nowrap; color: var(--brand-deep); width: 20%; }
+
+.hours-table td:first-child { font-weight: 400; width: 55%; }
+.hours-table td:last-child { color: var(--brand-ink); }
+
+/* --- contact ------------------------------------------------------ */
+
+.contact-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 62px;
+}
+
+.contact-block { margin-bottom: 32px; }
+.contact-block h4 { margin-bottom: 6px; color: var(--brand-deep); }
+.contact-block p { margin: 0; color: var(--brand-muted); }
+
+/* Links sit as direct children rather than inside a <p>: an anchor wrapped in
+   a paragraph makes the importer split that paragraph into a container, where
+   a bare anchor round-trips into a single editable button. */
+.contact-link {
+  display: inline-block;
+  color: var(--brand-accent);
+  text-decoration: none;
+  border-bottom: 1px solid var(--brand-line);
+  padding-bottom: 2px;
+}
+
+.contact-link:hover { border-bottom-color: var(--brand-accent); }
+
+/* --- footer ------------------------------------------------------- */
+
+.site-footer {
+  background: var(--brand-ink);
+  color: var(--brand-sand);
+  padding: 54px 0 40px;
+  text-align: center;
+}
+
+.site-footer .brand { color: #ffffff; }
+.site-footer p { color: #9db3bd; font-size: 15px; margin: 14px 0 0; }
+
+/* --- responsive --------------------------------------------------- */
+
+@media (max-width: 860px) {
+  h1 { font-size: 38px; }
+  h2 { font-size: 29px; }
+  .band { padding: 60px 0; }
+  .hero { padding-top: 48px; }
+  .grid-3, .grid-2, .split, .hero-grid, .contact-grid { grid-template-columns: 1fr; gap: 34px; }
+  .hero-img img { height: 300px; }
+  .header-inner { justify-content: center; }
+}

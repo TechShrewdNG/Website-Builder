@@ -1,0 +1,299 @@
+/* Marchmont & Co — estate agency template
+   ------------------------------------------------------------------
+   Every colour and both type stacks live in :root as custom properties.
+   The builder scrapes these into its Design tokens panel, so the whole
+   site can be re-branded from a handful of swatches without touching a
+   single element. Keep them 6-digit hex: that is what makes the colour
+   picker bind to them. */
+
+:root {
+  --brand-ink: #1b1d21;
+  --brand-deep: #23303a;
+  --brand-accent: #a8763f;
+  --brand-cream: #fbfaf8;
+  --brand-sand: #f0ece5;
+  --brand-muted: #6e7379;
+  --brand-line: #dfd9d0;
+  --font-display: Georgia, 'Times New Roman', serif;
+  --font-body: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--brand-cream);
+  color: var(--brand-ink);
+  font-family: var(--font-body);
+  font-size: 17px;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+}
+
+img { max-width: 100%; height: auto; display: block; }
+
+.wrap { max-width: 1160px; margin: 0 auto; padding: 0 24px; }
+.band { padding: 94px 0; }
+.band-tight { padding: 62px 0; }
+.band-sand { background: var(--brand-sand); }
+.band-deep { background: var(--brand-deep); color: var(--brand-cream); }
+
+/* --- type --------------------------------------------------------- */
+
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  line-height: 1.16;
+  margin: 0 0 18px;
+}
+
+h1 { font-size: 56px; letter-spacing: -0.02em; }
+h2 { font-size: 37px; }
+h3 { font-size: 22px; }
+h4 { font-size: 18px; }
+
+p { margin: 0 0 18px; }
+
+.eyebrow {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--brand-accent);
+  margin: 0 0 16px;
+}
+
+.lead { font-size: 20px; line-height: 1.6; color: var(--brand-muted); }
+.muted { color: var(--brand-muted); }
+.center { text-align: center; }
+.narrow { max-width: 640px; margin-left: auto; margin-right: auto; }
+
+/* --- header ------------------------------------------------------- */
+
+.site-header {
+  background: var(--brand-cream);
+  border-bottom: 1px solid var(--brand-line);
+  padding: 20px 0;
+}
+
+.header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+  flex-wrap: wrap;
+}
+
+.brand {
+  font-family: var(--font-display);
+  font-size: 25px;
+  color: var(--brand-deep);
+  text-decoration: none;
+  letter-spacing: 0.01em;
+}
+
+.site-nav ul {
+  list-style: none;
+  display: flex;
+  gap: 30px;
+  margin: 0;
+  padding: 0;
+}
+
+.site-nav a {
+  color: var(--brand-ink);
+  text-decoration: none;
+  font-size: 15px;
+  padding-bottom: 3px;
+  border-bottom: 1px solid transparent;
+}
+
+.site-nav a:hover { border-bottom-color: var(--brand-accent); }
+
+/* --- buttons ------------------------------------------------------ */
+
+.btn {
+  display: inline-block;
+  background: var(--brand-accent);
+  color: #ffffff;
+  padding: 15px 34px;
+  border-radius: 2px;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.btn:hover { background: var(--brand-deep); }
+
+.btn-outline {
+  display: inline-block;
+  background: transparent;
+  color: var(--brand-cream);
+  border: 1px solid var(--brand-cream);
+  padding: 15px 34px;
+  border-radius: 2px;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.btn-outline:hover { background: var(--brand-cream); color: var(--brand-deep); }
+
+/* --- hero --------------------------------------------------------- */
+
+.hero { position: relative; }
+.hero-img img { width: 100%; height: 560px; object-fit: cover; }
+
+.hero-panel {
+  background: var(--brand-cream);
+  max-width: 680px;
+  margin: -130px auto 0;
+  position: relative;
+  padding: 54px 56px 46px;
+  text-align: center;
+}
+
+/* --- grids -------------------------------------------------------- */
+
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 34px;
+}
+
+.split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 62px;
+  align-items: center;
+}
+
+/* --- listings ----------------------------------------------------- */
+
+.listing {
+  background: #ffffff;
+  border: 1px solid var(--brand-line);
+}
+
+.listing img { width: 100%; height: 240px; object-fit: cover; }
+.listing-body { padding: 26px 26px 30px; }
+.listing h3 { margin-bottom: 6px; }
+
+.price {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--brand-accent);
+  margin: 0 0 12px;
+}
+
+.listing p { margin: 0; color: var(--brand-muted); font-size: 16px; }
+
+.spec-list {
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  font-size: 14px;
+  color: var(--brand-muted);
+}
+
+/* --- steps -------------------------------------------------------- */
+
+.step {
+  border-top: 2px solid var(--brand-accent);
+  padding-top: 22px;
+}
+
+.step h3 { margin-bottom: 8px; }
+.step p { margin: 0; color: var(--brand-muted); font-size: 16px; }
+
+/* --- tables (fees) ------------------------------------------------ */
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 42px;
+  font-size: 16px;
+}
+
+th {
+  text-align: left;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--brand-accent);
+  padding: 0 0 14px;
+  border-bottom: 2px solid var(--brand-line);
+}
+
+td {
+  padding: 18px 0;
+  border-bottom: 1px solid var(--brand-line);
+  vertical-align: top;
+}
+
+td:first-child { font-family: var(--font-display); font-size: 19px; width: 32%; }
+td:last-child { text-align: right; white-space: nowrap; color: var(--brand-accent); width: 18%; }
+
+.hours-table td:first-child { font-family: var(--font-body); font-size: 16px; width: 55%; }
+.hours-table td:last-child { text-align: right; color: var(--brand-ink); }
+
+/* --- contact ------------------------------------------------------ */
+
+.contact-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 62px;
+}
+
+.contact-block { margin-bottom: 32px; }
+.contact-block h4 { margin-bottom: 6px; color: var(--brand-deep); }
+.contact-block p { margin: 0; color: var(--brand-muted); }
+
+/* Links sit as direct children rather than inside a <p>: an anchor wrapped in
+   a paragraph makes the importer split that paragraph into a container, where
+   a bare anchor round-trips into a single editable button. */
+.contact-link {
+  display: inline-block;
+  color: var(--brand-accent);
+  text-decoration: none;
+  border-bottom: 1px solid var(--brand-line);
+  padding-bottom: 2px;
+}
+
+.contact-link:hover { border-bottom-color: var(--brand-accent); }
+
+/* --- footer ------------------------------------------------------- */
+
+.site-footer {
+  background: var(--brand-ink);
+  color: var(--brand-sand);
+  padding: 54px 0 40px;
+  text-align: center;
+}
+
+.site-footer .brand { color: var(--brand-cream); }
+.site-footer p { color: #9c9691; font-size: 15px; margin: 14px 0 0; }
+
+/* --- responsive --------------------------------------------------- */
+
+@media (max-width: 860px) {
+  h1 { font-size: 38px; }
+  h2 { font-size: 29px; }
+  .band { padding: 60px 0; }
+  .grid-3, .split, .contact-grid { grid-template-columns: 1fr; gap: 34px; }
+  .hero-panel { margin-top: -60px; padding: 36px 28px; }
+  .hero-img img { height: 340px; }
+  .header-inner { justify-content: center; }
+}

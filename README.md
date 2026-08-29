@@ -32,10 +32,12 @@ Register an account at `/register`, then create a site from `/dashboard`.
 
 ## Starter templates
 
-The dashboard offers six multi-page templates — restaurant, law firm, fitness
-studio, salon, trades and photography — under **Start a new site → Start from
-a template**. Picking one creates the site with its stylesheet merged, images
-resolved and every page as a real route.
+The dashboard offers ten multi-page templates — restaurant, law firm, fitness
+studio, salon, trades, photography, dental clinic, estate agency, guest house
+and community charity — under **Start a new site → Start from a template**.
+Picking one creates the site with its stylesheet merged, images resolved and
+every page as a real route. Every template ships with real photography rather
+than placeholders.
 
 The sources live in `templates/`, packed into `public/templates/*.zip` and
 served as static assets. Choosing a card fetches that archive in the browser
@@ -49,6 +51,7 @@ which the builder surfaces in **Site → Design tokens** with a colour picker
 per value — so a template re-brands without editing CSS.
 
 ```bash
+npm run templates:photos    # re-download the Unsplash photography
 npm run templates:build     # repack the archives after editing a source
 npm run templates:thumbs    # re-screenshot the gallery previews
 npm run templates:audit     # verify they still import with zero raw-HTML nodes
